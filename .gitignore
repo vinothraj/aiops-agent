@@ -24,7 +24,7 @@ dist/
 # Project-specific ignores
 Backend/venv/
 Backend/.env
-Backend/aiops_dev.db
+Backend/*.db
 Backend/qdrant_data/
 Backend/Logs/
 Logs/

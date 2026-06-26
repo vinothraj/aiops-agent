@@ -1,7 +1,8 @@
 import os
 import time
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from threading import Thread
 from typing import Optional
 
@@ -38,17 +39,68 @@ def get_service_name(file_path: str, monitored_dir: str) -> str:
 
 class LogFileProcessor:
     @staticmethod
+    def should_process_file(file_path: str) -> bool:
+        """
+        Determines whether the file should be processed based on:
+        1. Extension (.log or .txt)
+        2. Modification time (within last 24 hours)
+        3. Excludes historical/rotated files containing date patterns, 
+           except if the date corresponds to today or yesterday.
+        """
+        if not os.path.isfile(file_path):
+            return False
+
+        _, ext = os.path.splitext(file_path)
+        if ext.lower() not in [".log", ".txt"]:
+            return False
+
+        # Filter by modification time (within last 24 hours)
+        try:
+            mtime = os.path.getmtime(file_path)
+            if time.time() - mtime > 86400:  # 24 hours in seconds
+                return False
+        except Exception as e:
+            logger.error(f"Error checking modification time for {file_path}: {e}")
+            return False
+
+        # Exclude historical files containing date patterns (e.g. YYYY-MM-DD or YYYYMMDD)
+        # unless they represent today's or yesterday's active rotated logs.
+        filename = os.path.basename(file_path)
+        date_patterns = [
+            r'\d{4}-\d{2}-\d{2}',
+            r'\d{8}'
+        ]
+        
+        has_date_pattern = False
+        found_date_str = None
+        for pattern in date_patterns:
+            match = re.search(pattern, filename)
+            if match:
+                has_date_pattern = True
+                found_date_str = match.group(0)
+                break
+                
+        if has_date_pattern and found_date_str:
+            today = datetime.now()
+            yesterday = today - timedelta(days=1)
+            allowed_dates = [
+                today.strftime("%Y-%m-%d"),
+                today.strftime("%Y%m%d"),
+                yesterday.strftime("%Y-%m-%d"),
+                yesterday.strftime("%Y%m%d")
+            ]
+            if found_date_str not in allowed_dates:
+                return False
+
+        return True
+
+    @staticmethod
     def process_file(file_path: str) -> None:
         """
         Processes new lines of a log file starting from its last processed position.
         Updates position and status in the database.
         """
-        if not os.path.isfile(file_path):
-            return
-
-        # Restrict to log/txt files
-        _, ext = os.path.splitext(file_path)
-        if ext.lower() not in [".log", ".txt"]:
+        if not LogFileProcessor.should_process_file(file_path):
             return
 
         db = SessionLocal()
