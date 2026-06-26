@@ -1,0 +1,40 @@
+Phase 6 – GitLab Incident Management Agent
+
+Implement a GitLab Agent that consumes output from the existing Incident Decision & Triage Engine.
+
+Objectives:
+
+1. Automatically create GitLab issues for incidents where:
+
+* recommended_action = CREATE_INCIDENT
+* recommended_action = IMMEDIATE_ESCALATION
+
+2. Generate rich incident descriptions using RCA, RAG findings, business impact, technical impact, and recommendations.
+
+3. Store GitLab issue metadata.
+
+4. Synchronize issue status between GitLab and local database.
+
+5. Support assignment, labels, priority mapping, and incident links.
+
+6. Create a GitLab Incident Dashboard.
+
+Create tables:
+
+gitlab_issues
+
+issue_activity
+
+Create APIs:
+
+POST /api/gitlab/create
+
+GET /api/gitlab/issues
+
+GET /api/gitlab/issues/{id}
+
+POST /api/gitlab/sync
+
+Design architecture for future Teams and Email notification agents.
+
+Do not implement LangGraph or multi-agent orchestration yet.

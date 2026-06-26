@@ -1,0 +1,260 @@
+<div class="container-fluid py-4" id="log-viewer-container">
+  <div class="mb-4">
+    <h1 class="text-white m-0" id="log-viewer-title">Log Explorer</h1>
+    <p class="text-secondary m-0" id="log-viewer-subtitle">Query and inspect logs across all monitored microservices.</p>
+  </div>
+
+  <!-- Filter Dashboard Panel -->
+  <div class="glass-panel p-4 mb-4" id="log-filters-panel">
+    <div class="row g-3">
+      <!-- Search Input -->
+      <div class="col-12 col-md-4">
+        <label for="log-search-input" class="form-label text-secondary fw-semibold small">Keyword Search</label>
+        <div class="input-group">
+          <input type="text" id="log-search-input" class="form-control bg-dark text-white border-secondary border-opacity-25" placeholder="Search message or stacktrace..." [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()">
+        </div>
+      </div>
+
+      <!-- Service Select -->
+      <div class="col-12 col-sm-6 col-md-2">
+        <label for="filter-service-select" class="form-label text-secondary fw-semibold small">Service</label>
+        <select id="filter-service-select" class="form-select bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="selectedService" (change)="applyFilters()">
+          <option value="">All Services</option>
+          <option *ngFor="let s of services" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <!-- Severity Level Select -->
+      <div class="col-12 col-sm-6 col-md-2">
+        <label for="filter-level-select" class="form-label text-secondary fw-semibold small">Severity Level</label>
+        <select id="filter-level-select" class="form-select bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="selectedLevel" (change)="applyFilters()">
+          <option value="">All Levels</option>
+          <option value="DEBUG">DEBUG</option>
+          <option value="INFO">INFO</option>
+          <option value="WARNING">WARNING</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+      </div>
+
+      <!-- Start Date -->
+      <div class="col-12 col-sm-6 col-md-2">
+        <label for="filter-start-date" class="form-label text-secondary fw-semibold small">Start Date</label>
+        <input type="datetime-local" id="filter-start-date" class="form-control bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="startDate" (change)="applyFilters()">
+      </div>
+
+      <!-- End Date -->
+      <div class="col-12 col-sm-6 col-md-2">
+        <label for="filter-end-date" class="form-label text-secondary fw-semibold small">End Date</label>
+        <input type="datetime-local" id="filter-end-date" class="form-control bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="endDate" (change)="applyFilters()">
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end gap-2 mt-3" id="filter-actions">
+      <button mat-stroked-button color="accent" (click)="resetFilters()" id="btn-reset-filters">
+        Reset Filters
+      </button>
+      <button mat-flat-button color="primary" style="background: var(--accent-gradient);" (click)="applyFilters()" id="btn-apply-filters">
+        <mat-icon>search</mat-icon> Query Logs
+      </button>
+    </div>
+  </div>
+
+  <!-- Table Panel -->
+  <div class="glass-panel overflow-hidden" id="log-table-panel">
+    <div *ngIf="loading" class="d-flex justify-content-center align-items-center py-5" id="log-loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading && logs.length === 0" class="text-center py-5 text-secondary" id="log-empty-state">
+      <mat-icon style="font-size: 3rem; width: auto; height: auto;" class="mb-2">find_in_page</mat-icon>
+      <p>No log entries match your criteria.</p>
+    </div>
+
+    <div *ngIf="!loading && logs.length > 0" class="table-responsive" id="log-table-wrapper">
+      <table class="table table-dark table-hover m-0 align-middle text-secondary font-mono" id="log-data-table">
+        <thead>
+          <tr>
+            <th style="width: 180px;">Timestamp</th>
+            <th style="width: 100px;">Level</th>
+            <th style="width: 150px;">Service</th>
+            <th>Message</th>
+            <th style="width: 50px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Loop with Detail Rows -->
+          <ng-container *ngFor="let log of logs; let idx = index">
+            <!-- Summary Row -->
+            <tr class="log-summary-row" (click)="toggleExpand(log.id)" style="cursor: pointer;" [id]="'log-row-' + log.id">
+              <td class="text-white small">{{ log.timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</td>
+              <td>
+                <span class="badge-log" [ngClass]="{
+                  'badge-error': log.log_level === 'ERROR',
+                  'badge-warning': log.log_level === 'WARNING',
+                  'badge-info': log.log_level === 'INFO',
+                  'badge-debug': log.log_level === 'DEBUG',
+                  'badge-default': log.log_level !== 'ERROR' && log.log_level !== 'WARNING' && log.log_level !== 'INFO' && log.log_level !== 'DEBUG'
+                }">{{ log.log_level }}</span>
+              </td>
+              <td class="text-white fw-semibold">{{ log.service_name }}</td>
+              <td class="text-truncate text-white" style="max-width: 400px;">
+                {{ log.message }}
+              </td>
+              <td>
+                <mat-icon>{{ expandedLogId === log.id ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+              </td>
+            </tr>
+
+            <!-- Expanded Details Row -->
+            <tr *ngIf="expandedLogId === log.id" class="log-detail-row bg-black bg-opacity-40" [id]="'log-detail-row-' + log.id">
+              <td colspan="5" class="p-4 text-secondary">
+                <div class="d-flex flex-column gap-3">
+                  <!-- Header details -->
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <div class="small text-uppercase fw-semibold mb-1" style="color: var(--text-secondary);">Source File Path</div>
+                      <div class="text-white small bg-black bg-opacity-50 p-2 rounded border border-secondary border-opacity-10">{{ log.file_path }}</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <div class="small text-uppercase fw-semibold mb-1" style="color: var(--text-secondary);">Ingested Timestamp</div>
+                      <div class="text-white small bg-black bg-opacity-50 p-2 rounded border border-secondary border-opacity-10">{{ log.created_at | date:'yyyy-MM-dd HH:mm:ss.SSS' }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Full Message -->
+                  <div>
+                    <div class="small text-uppercase fw-semibold mb-1" style="color: var(--text-secondary);">Full Message</div>
+                    <div class="text-white bg-black bg-opacity-50 p-3 rounded border border-secondary border-opacity-10" style="white-space: pre-wrap;">{{ log.message }}</div>
+                  </div>
+
+                  <!-- Stack Trace -->
+                  <div *ngIf="log.stacktrace">
+                    <div class="small text-uppercase fw-semibold mb-1 text-danger">Stack Trace</div>
+                    <pre class="bg-black text-danger p-3 rounded border border-danger border-opacity-20 m-0" style="font-size: 0.85rem; max-height: 300px; overflow-y: auto;">{{ log.stacktrace }}</pre>
+                  </div>
+
+                  <!-- RCA Section -->
+                  <div class="mt-4 border-top border-secondary border-opacity-10 pt-3">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                      <div class="d-flex align-items-center justify-content-center rounded bg-primary bg-opacity-25 text-primary" style="width: 28px; height: 28px;">
+                        <mat-icon style="font-size: 1.1rem; width: auto; height: auto;">psychology</mat-icon>
+                      </div>
+                      <div class="fw-semibold text-white">AI Root Cause Analysis</div>
+                    </div>
+                    
+                    <div *ngIf="rcaLoading[log.id]" class="d-flex align-items-center gap-3 text-secondary small p-4 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10">
+                      <mat-spinner diameter="20"></mat-spinner> 
+                      <span>Analyzing logs and correlating context with Google Gemini...</span>
+                    </div>
+                    
+                    <div *ngIf="rcaError[log.id]" class="text-danger small p-3 bg-danger bg-opacity-10 rounded border border-danger border-opacity-25 d-flex align-items-center gap-2">
+                      <mat-icon style="font-size: 1.2rem; width: auto; height: auto;">error_outline</mat-icon>
+                      {{ rcaError[log.id] }}
+                    </div>
+
+                    <div *ngIf="!rcaLoading[log.id] && !rcaData[log.id] && !rcaError[log.id]" class="p-4 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10 text-center">
+                      <mat-icon class="text-secondary mb-2" style="font-size: 2.5rem; width: auto; height: auto;">auto_awesome</mat-icon>
+                      <h6 class="text-white mb-2">No Analysis Found</h6>
+                      <p class="text-secondary small mb-3 max-w-lg mx-auto">Trigger an AI-powered root cause analysis to automatically analyze the surrounding context, find the underlying issue, correlate related logs, and get recommended fixes.</p>
+                      <button mat-flat-button color="primary" (click)="triggerAnalysis(log.id)" style="background: var(--accent-gradient);">
+                        <mat-icon>psychology</mat-icon> Generate Root Cause Analysis
+                      </button>
+                    </div>
+
+                    <div *ngIf="rcaData[log.id] as rca" class="bg-black bg-opacity-40 p-4 rounded border border-primary border-opacity-25 position-relative overflow-hidden">
+                      <!-- Subtle glow effect -->
+                      <div class="position-absolute top-0 start-0 w-100 h-100 pointer-events-none" style="background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.05), transparent 50%);"></div>
+                      
+                      <div class="row g-4 position-relative">
+                        <!-- Left Column: Details -->
+                        <div class="col-12 col-md-8">
+                          <h6 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
+                            <span>Root Cause</span>
+                            <span class="badge bg-secondary bg-opacity-25 text-white fw-normal">{{ rca.root_cause_category }}</span>
+                          </h6>
+                          <p class="text-secondary small">{{ rca.root_cause }}</p>
+
+                          <h6 class="text-white fw-bold mb-1 mt-4">Executive Summary</h6>
+                          <p class="text-secondary small">{{ rca.summary }}</p>
+
+                          <h6 class="text-white fw-bold mb-1 mt-4">Impact Assessment</h6>
+                          <div class="bg-dark bg-opacity-50 p-3 rounded border border-secondary border-opacity-10">
+                            <p class="text-secondary small mb-2"><strong class="text-white">Business Impact:</strong> {{ rca.business_impact }}</p>
+                            <p class="text-secondary small mb-0"><strong class="text-white">Technical Impact:</strong> {{ rca.technical_impact }}</p>
+                          </div>
+                        </div>
+                        
+                        <!-- Right Column: Metadata -->
+                        <div class="col-12 col-md-4">
+                          <div class="bg-dark p-3 rounded h-100 border border-secondary border-opacity-10">
+                            <div class="small fw-bold text-uppercase text-secondary mb-3">Analysis Metadata</div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary border-opacity-10">
+                              <span class="text-secondary small">Severity Classification</span>
+                              <span class="badge" [ngClass]="{'bg-danger': rca.severity.includes('P1') || rca.severity.includes('P2'), 'bg-warning text-dark': rca.severity.includes('P3'), 'bg-info text-dark': rca.severity.includes('P4'), 'bg-secondary': !rca.severity}">{{ rca.severity }}</span>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                              <span class="text-secondary small">AI Confidence</span>
+                              <div class="d-flex align-items-center gap-2">
+                                <div class="progress" style="width: 50px; height: 6px; background-color: rgba(255,255,255,0.1);">
+                                  <div class="progress-bar bg-success" role="progressbar" [style.width.%]="rca.confidence_score * 100"></div>
+                                </div>
+                                <span class="text-white small fw-semibold">{{ (rca.confidence_score * 100).toFixed(0) }}%</span>
+                              </div>
+                            </div>
+
+                            <div class="mb-3">
+                              <span class="text-secondary small d-block mb-2">Affected Dependencies</span>
+                              <div class="d-flex flex-wrap gap-1">
+                                <span class="badge bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-white fw-normal" *ngFor="let dep of rca.dependencies">{{ dep.dependency }}</span>
+                                <span class="small text-secondary fst-italic" *ngIf="!rca.dependencies || rca.dependencies.length === 0">None identified</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <span class="text-secondary small d-block mb-2">Detected Patterns</span>
+                              <div class="d-flex flex-wrap gap-1">
+                                <span class="badge bg-primary bg-opacity-25 border border-primary border-opacity-25 text-primary fw-normal" *ngFor="let pattern of rca.patterns">{{ pattern.pattern }}</span>
+                                <span class="small text-secondary fst-italic" *ngIf="!rca.patterns || rca.patterns.length === 0">None identified</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Full Width: Recommendations -->
+                        <div class="col-12 mt-2">
+                           <h6 class="text-white fw-bold mb-2">Recommended Remediation</h6>
+                           <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 p-4 rounded d-flex gap-3">
+                             <mat-icon class="text-primary flex-shrink-0 mt-1">build</mat-icon>
+                             <pre class="m-0 text-white w-100" style="font-family: var(--font-body); font-size: 0.85rem; white-space: pre-wrap; line-height: 1.5;">{{ rca.recommendation }}</pre>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="d-flex justify-content-between align-items-center p-3 border-top border-secondary border-opacity-10" id="log-pagination">
+      <div class="small text-secondary" id="pagination-info">
+        Page {{ currentPage + 1 }}
+      </div>
+      <div class="d-flex gap-2">
+        <button mat-stroked-button [disabled]="currentPage === 0 || loading" (click)="prevPage()" id="btn-prev-page">
+          <mat-icon>chevron_left</mat-icon> Previous
+        </button>
+        <button mat-stroked-button [disabled]="!hasMore || loading" (click)="nextPage()" id="btn-next-page">
+          Next <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

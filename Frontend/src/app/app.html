@@ -1,0 +1,97 @@
+<!-- Main App Layout Shell -->
+<div class="d-flex flex-column min-vh-100" style="background-color: var(--bg-app);">
+  <!-- Premium Glassmorphic Navigation Header -->
+  <nav class="navbar navbar-expand-lg navbar-dark border-bottom border-light border-opacity-10 sticky-top py-3" 
+       style="background: rgba(8, 13, 22, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);"
+       id="app-navbar">
+    <div class="container-fluid px-4">
+      <!-- Brand Logo & Name -->
+      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="/" id="navbar-brand-link" style="font-family: var(--font-title); font-size: 1.25rem;">
+        <div class="d-flex align-items-center justify-content-center rounded-3 p-1.5 text-white" 
+             style="background: var(--accent-gradient); box-shadow: var(--accent-glow); width: 32px; height: 32px;">
+          <mat-icon style="font-size: 1.25rem; width: auto; height: auto;">security</mat-icon>
+        </div>
+        <span class="text-white">AIOps <span style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Platform</span></span>
+      </a>
+
+      <!-- Navbar Toggle for Mobile -->
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation" id="navbar-toggle-btn">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Navigation Links -->
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav align-items-center gap-2 mt-3 mt-lg-0">
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/dashboard" routerLinkActive="active-link" id="nav-link-dashboard">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">dashboard</mat-icon>
+                <span>Dashboard</span>
+              </div>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/logs" routerLinkActive="active-link" id="nav-link-logs">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">receipt_long</mat-icon>
+                <span>Log Explorer</span>
+              </div>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/log-sources" routerLinkActive="active-link" id="nav-link-sources">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">folder_open</mat-icon>
+                <span>Log Sources</span>
+              </div>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/rca" routerLinkActive="active-link" id="nav-link-rca">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">psychology</mat-icon>
+                <span>AI RCA</span>
+              </div>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/incidents" routerLinkActive="active-link" id="nav-link-incidents">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">assignment_late</mat-icon>
+                <span>Incident Queue</span>
+              </div>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/gitlab-issues" routerLinkActive="active-link" id="nav-link-gitlab">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">account_tree</mat-icon>
+                <span>GitLab Issues</span>
+              </div>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 py-2 text-secondary" routerLink="/notifications" routerLinkActive="active-link" id="nav-link-notifications">
+              <div class="d-flex align-items-center gap-2">
+                <mat-icon style="font-size: 1.15rem; width: auto; height: auto;">notifications</mat-icon>
+                <span>Notifications</span>
+              </div>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Router Content Area -->
+  <main class="flex-grow-1">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-4 border-top border-light border-opacity-10 text-center text-secondary font-mono" style="font-size: 0.8rem; background: rgba(8, 13, 22, 0.4);" id="app-footer">
+    <div class="container">
+      &copy; 2026 Enterprise AIOps Platform Foundation. All rights reserved.
+    </div>
+  </footer>
+</div>

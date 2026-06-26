@@ -1,0 +1,20 @@
+.donut-chart {
+  transform: rotate(-90deg);
+}
+
+.chart-text {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.donut-segment {
+  transition: stroke-dasharray 0.5s ease-in-out, stroke-dashoffset 0.5s ease-in-out;
+}
+
+#dashboard-stats-grid .glass-panel {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#dashboard-stats-grid .glass-panel:hover {
+  transform: translateY(-4px);
+}

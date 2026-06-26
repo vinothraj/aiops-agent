@@ -1,0 +1,33 @@
+Phase 5 – Incident Decision & Triage Engine
+
+Implement an AI-powered decision engine on top of the existing RCA and RAG modules.
+
+Objectives:
+
+1. Calculate incident risk score.
+2. Calculate business impact score.
+3. Calculate technical impact score.
+4. Calculate frequency score.
+5. Determine incident priority (P1–P4).
+6. Recommend action:
+
+* IGNORE
+* MONITOR
+* INVESTIGATE
+* CREATE_INCIDENT
+* IMMEDIATE_ESCALATION
+
+7. Persist decision history.
+8. Display decision rationale in UI.
+9. Add Incident Queue dashboard.
+10. Prepare architecture for future GitLab integration.
+
+Create APIs:
+
+POST /api/incident/triage
+
+GET /api/incidents
+
+GET /api/incidents/{id}
+
+The output should be structured JSON and consumable by future GitLab and Notification agents.

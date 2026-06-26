@@ -1,0 +1,219 @@
+/* ─── Priority Colors ──────────────────────────────────────────────── */
+.priority-p1 { color: #ef4444 !important; }
+.priority-p2 { color: #f97316 !important; }
+.priority-p3 { color: #eab308 !important; }
+.priority-p4 { color: #3b82f6 !important; }
+
+.priority-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  min-width: 48px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.priority-badge.priority-p1 { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); }
+.priority-badge.priority-p2 { background: rgba(249, 115, 22, 0.15); border: 1px solid rgba(249, 115, 22, 0.4); }
+.priority-badge.priority-p3 { background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.4); }
+.priority-badge.priority-p4 { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); }
+
+/* ─── Action Badges ────────────────────────────────────────────────── */
+.action-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.action-escalate { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #ef4444; }
+.action-create   { background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.5); color: #f97316; }
+.action-investigate { background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.5); color: #eab308; }
+.action-monitor  { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); color: #3b82f6; }
+.action-ignore   { background: rgba(107, 114, 128, 0.2); border: 1px solid rgba(107, 114, 128, 0.5); color: #9ca3af; }
+
+/* ─── Incident Card ────────────────────────────────────────────────── */
+.incident-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+.incident-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Score Bars ───────────────────────────────────────────────────── */
+.score-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.score-label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  min-width: 55px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.score-bar-container {
+  width: 60px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.score-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.score-bar.priority-p1 { background: #ef4444; }
+.score-bar.priority-p2 { background: #f97316; }
+.score-bar.priority-p3 { background: #eab308; }
+.score-bar.priority-p4 { background: #3b82f6; }
+.score-value {
+  font-size: 0.7rem;
+  color: #d1d5db;
+  min-width: 30px;
+  font-weight: 600;
+}
+
+/* ─── Expand Arrow ─────────────────────────────────────────────────── */
+.expand-arrow {
+  transition: transform 0.2s ease;
+}
+.expand-arrow.rotated {
+  transform: rotate(180deg);
+}
+
+/* ─── Summary Stat Cards ───────────────────────────────────────────── */
+.stat-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+.stat-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.stat-card.active-filter {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.08);
+}
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* ─── Rationale Section ────────────────────────────────────────────── */
+.rationale-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  animation: fadeIn 0.2s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Chronological Timeline ────────────────────────────────────────── */
+.timeline-container {
+  position: relative;
+  padding-left: 2.5rem;
+  margin-top: 1.5rem;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 17px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-badge {
+  position: absolute;
+  left: -2.5rem;
+  top: 2px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  border: 2px solid var(--bg-app);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+/* Event type variations */
+.timeline-badge.log { background-color: #1e293b; color: #94a3b8; border-color: rgba(148, 163, 184, 0.4); }
+.timeline-badge.rca { background-color: rgba(99, 102, 241, 0.2); color: #6366f1; border-color: rgba(99, 102, 241, 0.4); }
+.timeline-badge.triage { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
+.timeline-badge.gitlab { background-color: rgba(244, 63, 94, 0.2); color: #f43f5e; border-color: rgba(244, 63, 94, 0.4); }
+.timeline-badge.notification { background-color: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+
+.timeline-content {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 0.85rem 1.15rem;
+  transition: all 0.2s ease;
+}
+
+.timeline-content:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.timeline-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.timeline-title {
+  font-family: var(--font-title);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.timeline-time {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.timeline-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+

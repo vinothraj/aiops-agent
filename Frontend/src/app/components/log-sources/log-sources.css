@@ -1,0 +1,13 @@
+/* Style for log sources component */
+.table th {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-glass);
+}
+
+.table td {
+  border-bottom: 1px solid var(--border-glass);
+}

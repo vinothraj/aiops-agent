@@ -1,0 +1,198 @@
+/* Import Bootstrap & Angular Material Prebuilt Theme */
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "@angular/material/prebuilt-themes/indigo-pink.css";
+
+/* Global Variable Declarations */
+:root {
+  --font-title: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+  
+  --bg-app: #080d16;
+  --bg-card: rgba(30, 41, 59, 0.7);
+  --bg-card-hover: rgba(30, 41, 59, 0.95);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  
+  /* Log level colors (Harmonious & Sleek) */
+  --color-error: #f43f5e;
+  --color-warning: #f59e0b;
+  --color-info: #0ea5e9;
+  --color-debug: #10b981;
+  --color-default: #64748b;
+  
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --accent-glow: 0 8px 32px 0 rgba(99, 102, 241, 0.2);
+}
+
+/* Base Styles */
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Glassmorphism Containers */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(8, 13, 22, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+/* Log Badges */
+.badge-log {
+  font-family: var(--font-body);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-error {
+  background-color: rgba(244, 63, 94, 0.15);
+  color: var(--color-error);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-info {
+  background-color: rgba(14, 165, 233, 0.15);
+  color: var(--color-info);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.badge-debug {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--color-debug);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-default {
+  background-color: rgba(100, 116, 139, 0.15);
+  color: var(--color-default);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Status Badges */
+.badge-status-completed {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--color-debug);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-status-processing {
+  background-color: rgba(14, 165, 233, 0.15);
+  color: var(--color-info);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.badge-status-new {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-status-failed {
+  background-color: rgba(244, 63, 94, 0.15);
+  color: var(--color-error);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+/* Text Mono Styles for code or log structures */
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+/* Angular Material Tables Overrides to blend with Dark Theme */
+.mat-mdc-table {
+  background-color: transparent !important;
+}
+
+.mat-mdc-header-row {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
+.mat-mdc-row {
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+
+.mat-mdc-row:hover {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.mat-mdc-header-cell {
+  color: var(--text-primary) !important;
+  font-family: var(--font-title);
+  font-weight: 600 !important;
+  border-bottom: 2px solid var(--border-glass) !important;
+}
+
+.mat-mdc-cell {
+  color: var(--text-secondary) !important;
+}
+
+/* Angular Material Paginator Custom Styles */
+.mat-mdc-paginator {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+.mat-mdc-paginator-navigation-button {
+  color: var(--text-primary) !important;
+}
+
+/* Active Nav Links styling */
+.nav-link.active-link {
+  background: var(--accent-gradient);
+  color: white !important;
+  font-weight: 500;
+  border-radius: 6px;
+  box-shadow: var(--accent-glow);
+}

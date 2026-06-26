@@ -1,0 +1,308 @@
+<div class="container-fluid py-4" id="notifications-dashboard-container">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="text-white m-0 d-flex align-items-center gap-2">
+        <mat-icon style="color: var(--color-info); font-size: 2.2rem; width: auto; height: auto;">notifications</mat-icon>
+        Notification & Collaboration Hub
+      </h1>
+      <p class="text-secondary m-0">Manage alert routing rules, view history logs, and generate operational digests.</p>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="glass-panel p-2 mb-4 d-flex gap-2 align-items-center flex-wrap" style="background: rgba(15, 23, 42, 0.45); border-radius: 10px;">
+    <button class="tab-btn" [class.active]="activeTab === 'preferences'" (click)="switchTab('preferences')">
+      <mat-icon class="me-1">settings</mat-icon> Routing Preferences
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'history'" (click)="switchTab('history')">
+      <mat-icon class="me-1">history</mat-icon> Dispatch History
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'digests'" (click)="switchTab('digests')">
+      <mat-icon class="me-1">summarize</mat-icon> AI Digests & Reports
+    </button>
+  </div>
+
+  <!-- Messages Feedback -->
+  <div *ngIf="successMessage" class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-20 text-success d-flex align-items-center gap-2 mb-4">
+    <mat-icon>check_circle</mat-icon>
+    <span>{{ successMessage }}</span>
+  </div>
+  <div *ngIf="errorMessage" class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-20 text-danger d-flex align-items-center gap-2 mb-4">
+    <mat-icon>error</mat-icon>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Content Sections -->
+  <!-- 1. PREFERENCES TAB -->
+  <div *ngIf="activeTab === 'preferences'" class="row g-4 animate-fade-in">
+    <!-- Configuration Form -->
+    <div class="col-12 col-lg-4">
+      <div class="glass-panel p-4 h-100">
+        <h3 class="text-white fw-bold mb-3 d-flex align-items-center gap-2" style="font-size: 1.25rem;">
+          <mat-icon style="color: var(--color-info);">{{ editingRecipientId ? 'edit_note' : 'add_circle' }}</mat-icon>
+          {{ editingRecipientId ? 'Edit Routing Rule' : 'New Routing Rule' }}
+        </h3>
+        
+        <form (submit)="saveRecipient(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-semibold">Recipient Name</label>
+            <input type="text" class="form-control dark-input" [(ngModel)]="recipientName" name="recipientName" placeholder="e.g. On-Call DevOps Team" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-semibold">RCA Category Filter</label>
+            <select class="form-select dark-input" [(ngModel)]="category" name="category">
+              <option value="DEFAULT">DEFAULT (Fallback)</option>
+              <option value="DATABASE">DATABASE</option>
+              <option value="NETWORK">NETWORK</option>
+              <option value="API">API / GATEWAY</option>
+              <option value="AUTHENTICATION">AUTHENTICATION / SECURITY</option>
+              <option value="DEPLOYMENT">DEPLOYMENT</option>
+              <option value="MICROSERVICE">MICROSERVICE / COMPUTATION</option>
+            </select>
+            <span class="text-secondary opacity-50 small" style="font-size: 0.75rem;">Category matched during AI RCA diagnosis.</span>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-semibold">Delivery Channel</label>
+            <select class="form-select dark-input" [(ngModel)]="channel" name="channel">
+              <option value="email">Email Alerting</option>
+              <option value="teams">Microsoft Teams Webhook</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-semibold">Destination Address / URL</label>
+            <input type="text" class="form-control dark-input font-mono" [(ngModel)]="destination" name="destination" placeholder="e.g. alerts@company.com or http://msteams..." required>
+          </div>
+
+          <div class="mb-4 form-check form-switch d-flex align-items-center gap-2">
+            <input class="form-check-input dark-switch" type="checkbox" id="isActiveSwitch" [(ngModel)]="isActive" name="isActive">
+            <label class="form-check-label text-white small" for="isActiveSwitch">Enable Rule Active State</label>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" mat-flat-button color="primary" class="flex-grow-1" style="background: var(--accent-gradient);">
+              <mat-icon class="me-1">save</mat-icon> {{ editingRecipientId ? 'Update Rule' : 'Add Rule' }}
+            </button>
+            <button *ngIf="editingRecipientId" type="button" mat-stroked-button class="text-white border-secondary border-opacity-25" (click)="cancelEdit()">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Routing Cards List -->
+    <div class="col-12 col-lg-8">
+      <div class="glass-panel p-4 h-100">
+        <h3 class="text-white fw-bold mb-3 d-flex align-items-center justify-content-between" style="font-size: 1.25rem;">
+          <span>Active Routing Table</span>
+          <span class="badge bg-dark border border-secondary border-opacity-25 text-white" style="font-size: 0.75rem;">{{ recipients.length }} rules defined</span>
+        </h3>
+
+        <div *ngIf="loadingRecipients" class="d-flex justify-content-center align-items-center py-5">
+          <mat-spinner diameter="35"></mat-spinner>
+        </div>
+
+        <div *ngIf="!loadingRecipients && recipients.length === 0" class="text-center py-5 text-secondary">
+          <mat-icon style="font-size: 2.5rem; width: auto; height: auto;" class="opacity-50">alt_route</mat-icon>
+          <p class="mt-2 text-white">No custom routing rules defined.</p>
+          <p class="small">Notifications will fall back to default channels defined in backend configurations.</p>
+        </div>
+
+        <div *ngIf="!loadingRecipients && recipients.length > 0" class="row g-3">
+          <div class="col-12" *ngFor="let recipient of recipients">
+            <div class="bg-black bg-opacity-30 p-3 rounded border border-secondary border-opacity-20 d-flex flex-wrap justify-content-between align-items-center gap-3 hover-card">
+              <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle p-2.5 d-flex align-items-center justify-content-center" 
+                     [style.background-color]="recipient.channel === 'teams' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(14, 165, 233, 0.15)'"
+                     [style.color]="recipient.channel === 'teams' ? 'var(--color-info)' : 'var(--color-debug)'">
+                  <mat-icon>{{ recipient.channel === 'teams' ? 'groups' : 'mail' }}</mat-icon>
+                </div>
+                <div>
+                  <div class="d-flex align-items-center gap-2">
+                    <h5 class="text-white m-0 fw-bold" style="font-size: 1rem;">{{ recipient.recipient_name }}</h5>
+                    <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-25 text-uppercase" style="font-size: 0.65rem;">
+                      {{ recipient.category }}
+                    </span>
+                    <span class="badge" [ngClass]="recipient.is_active ? 'badge-status-completed' : 'badge-status-failed'" style="font-size: 0.65rem;">
+                      {{ recipient.is_active ? 'Active' : 'Disabled' }}
+                    </span>
+                  </div>
+                  <div class="small text-secondary font-mono mt-1 text-truncate" style="max-width: 320px;">
+                    {{ recipient.destination }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rule Actions -->
+              <div class="d-flex gap-2">
+                <button mat-icon-button class="text-secondary hover-text-info" (click)="testRecipient(recipient)" title="Send Test Payload">
+                  <mat-icon style="font-size: 1.15rem;">ring_volume</mat-icon>
+                </button>
+                <button mat-icon-button class="text-secondary hover-text-warning" (click)="startEdit(recipient)" title="Edit Rule">
+                  <mat-icon style="font-size: 1.15rem;">edit</mat-icon>
+                </button>
+                <button mat-icon-button class="text-secondary hover-text-danger" (click)="deleteRecipient(recipient.id)" title="Delete Rule">
+                  <mat-icon style="font-size: 1.15rem;">delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. HISTORY TAB -->
+  <div *ngIf="activeTab === 'history'" class="glass-panel p-4 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="text-white fw-bold m-0" style="font-size: 1.25rem;">Alert Dispatch History</h3>
+      <button mat-flat-button class="text-white border border-secondary border-opacity-25" style="background: rgba(255,255,255,0.05);" (click)="loadHistory()">
+        <mat-icon class="me-1">refresh</mat-icon> Refresh
+      </button>
+    </div>
+
+    <div *ngIf="loadingHistory" class="d-flex justify-content-center align-items-center py-5">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loadingHistory && history.length === 0" class="text-center py-5 text-secondary">
+      <mat-icon style="font-size: 3rem; width: auto; height: auto;" class="opacity-50">history_toggle_off</mat-icon>
+      <p class="mt-2 text-white">No historical alerts found.</p>
+      <p class="small">When incidents are triaged, they trigger webhook or email alerts which are recorded here.</p>
+    </div>
+
+    <div *ngIf="!loadingHistory && history.length > 0" class="table-responsive">
+      <table class="table text-secondary align-middle">
+        <thead>
+          <tr class="border-bottom border-secondary border-opacity-20">
+            <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Channel</th>
+            <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Destination</th>
+            <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Notification Message</th>
+            <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Status</th>
+            <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Retries</th>
+            <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Dispatched At</th>
+            <th class="text-white py-3 fw-bold text-end" style="font-family: var(--font-title);">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let alert of history" class="border-bottom border-secondary border-opacity-10 hover-row">
+            <td class="py-3">
+              <span class="d-flex align-items-center gap-1.5 text-white fw-semibold">
+                <mat-icon [style.color]="alert.channel === 'teams' ? 'var(--color-info)' : 'var(--color-debug)'" style="font-size: 1.15rem; width: auto; height: auto;">
+                  {{ alert.channel === 'teams' ? 'groups' : 'mail' }}
+                </mat-icon>
+                <span class="text-capitalize">{{ alert.channel }}</span>
+              </span>
+            </td>
+            <td class="font-mono py-3" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="alert.recipient_destination">
+              {{ alert.recipient_destination }}
+            </td>
+            <td class="py-3" style="max-width: 320px;">
+              <div class="text-white fw-semibold text-truncate">{{ alert.title }}</div>
+              <div class="small text-secondary text-truncate" style="max-width: 320px;">{{ alert.message }}</div>
+            </td>
+            <td class="py-3">
+              <span class="badge" 
+                    [ngClass]="{
+                      'badge-status-completed': alert.status === 'SENT', 
+                      'badge-status-failed': alert.status === 'FAILED', 
+                      'badge-status-new': alert.status === 'PENDING'
+                    }">
+                {{ alert.status }}
+              </span>
+              <div *ngIf="alert.status === 'FAILED' && alert.error_message" class="text-danger small font-mono mt-1 text-truncate" style="max-width: 150px;" [title]="alert.error_message">
+                {{ alert.error_message }}
+              </div>
+            </td>
+            <td class="font-mono py-3">{{ alert.retry_count }}</td>
+            <td class="py-3 small">{{ alert.created_at | date:'yyyy-MM-dd HH:mm:ss' }}</td>
+            <td class="py-3 text-end">
+              <button mat-stroked-button class="text-white border-secondary border-opacity-25" style="font-size: 0.8rem; padding: 2px 10px;" (click)="retryAlert(alert.id)" [disabled]="alert.status === 'SENT'">
+                <mat-icon style="font-size: 0.95rem; width: auto; height: auto;" class="me-1">replay</mat-icon> Retry
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. AI DIGESTS TAB -->
+  <div *ngIf="activeTab === 'digests'" class="row g-4 animate-fade-in">
+    <!-- Daily operational digest -->
+    <div class="col-12 col-lg-6">
+      <div class="glass-panel p-4 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <mat-icon style="color: var(--color-warning);">today</mat-icon>
+            <h3 class="text-white fw-bold m-0" style="font-size: 1.25rem;">Daily Operational Digest</h3>
+          </div>
+          <button mat-flat-button color="accent" style="background: var(--accent-gradient);" (click)="generateDailyDigest()" [disabled]="loadingDigest">
+            <span *ngIf="!loadingDigest">Synthesize Digest</span>
+            <mat-spinner diameter="18" *ngIf="loadingDigest"></mat-spinner>
+          </button>
+        </div>
+
+        <p class="text-secondary small mb-3">
+          Queries Gemini model to aggregate and synthesize all logged operational activities, alert failures, GitLab activities, and RCA results over the past 24 hours.
+        </p>
+
+        <div class="bg-black bg-opacity-40 p-4 rounded border border-secondary border-opacity-25 flex-grow-1 overflow-auto font-mono text-white text-pre" style="min-height: 380px; max-height: 500px; white-space: pre-wrap;">
+          <div *ngIf="loadingDigest" class="d-flex flex-column justify-content-center align-items-center h-100">
+            <mat-spinner diameter="30"></mat-spinner>
+            <p class="text-secondary mt-3 small">Gemini is synthesizing operational logs and events...</p>
+          </div>
+          
+          <div *ngIf="!loadingDigest && !dailyDigest" class="d-flex flex-column justify-content-center align-items-center h-100 text-secondary opacity-50">
+            <mat-icon style="font-size: 2.5rem; width: auto; height: auto;">analytics</mat-icon>
+            <span class="mt-2 text-center">No digest loaded. Click "Synthesize Digest" above.</span>
+          </div>
+
+          <div *ngIf="!loadingDigest && dailyDigest" class="digest-text">
+            {{ dailyDigest }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly insights report -->
+    <div class="col-12 col-lg-6">
+      <div class="glass-panel p-4 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <mat-icon style="color: var(--color-info);">query_stats</mat-icon>
+            <h3 class="text-white fw-bold m-0" style="font-size: 1.25rem;">Weekly SRE Reliability Report</h3>
+          </div>
+          <button mat-flat-button color="accent" style="background: var(--accent-gradient);" (click)="generateWeeklyInsights()" [disabled]="loadingInsights">
+            <span *ngIf="!loadingInsights">Aggregate Insights</span>
+            <mat-spinner diameter="18" *ngIf="loadingInsights"></mat-spinner>
+          </button>
+        </div>
+
+        <p class="text-secondary small mb-3">
+          Collects systems metrics, high severity incidents, and resolved tasks over the last 7 days to compile a high-level site reliability insights report.
+        </p>
+
+        <div class="bg-black bg-opacity-40 p-4 rounded border border-secondary border-opacity-25 flex-grow-1 overflow-auto font-mono text-white text-pre" style="min-height: 380px; max-height: 500px; white-space: pre-wrap;">
+          <div *ngIf="loadingInsights" class="d-flex flex-column justify-content-center align-items-center h-100">
+            <mat-spinner diameter="30"></mat-spinner>
+            <p class="text-secondary mt-3 small">Compiling reliability patterns and trend lines...</p>
+          </div>
+          
+          <div *ngIf="!loadingInsights && !weeklyInsights" class="d-flex flex-column justify-content-center align-items-center h-100 text-secondary opacity-50">
+            <mat-icon style="font-size: 2.5rem; width: auto; height: auto;">monitoring</mat-icon>
+            <span class="mt-2 text-center">No insights report loaded. Click "Aggregate Insights" above.</span>
+          </div>
+
+          <div *ngIf="!loadingInsights && weeklyInsights" class="digest-text">
+            {{ weeklyInsights }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

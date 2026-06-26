@@ -1,0 +1,95 @@
+<div class="container-fluid py-4" id="log-sources-container">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="text-white m-0" id="log-sources-title">Monitored Log Sources</h1>
+      <p class="text-secondary m-0" id="log-sources-subtitle">Overview of log directories, ingestion streams, and processing offsets.</p>
+    </div>
+    <button mat-flat-button color="accent" class="d-flex align-items-center gap-2" [disabled]="reprocessingAll || loading" (click)="reprocessAll()" id="btn-reprocess-all">
+      <mat-icon *ngIf="!reprocessingAll">sync</mat-icon>
+      <mat-spinner *ngIf="reprocessingAll" diameter="20" class="me-1"></mat-spinner>
+      Reprocess All Sources
+    </button>
+  </div>
+
+  <!-- Ingestion Directory Card -->
+  <div class="glass-panel p-4 mb-4" id="log-directory-info-card">
+    <div class="d-flex align-items-center gap-3">
+      <div class="p-3 rounded bg-primary bg-opacity-10 text-primary">
+        <mat-icon style="font-size: 2rem; width: auto; height: auto;">folder</mat-icon>
+      </div>
+      <div>
+        <h5 class="text-white m-0">Log Watcher Working Directory</h5>
+        <code class="text-info d-block mt-1 font-mono fs-6" id="monitored-directory-path">C:/Logs (Supports nested folders /Service/logs)</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="{
+    'alert-success bg-success bg-opacity-20 text-success border-success border-opacity-30': messageType === 'success',
+    'alert-danger bg-danger bg-opacity-20 text-danger border-danger border-opacity-30': messageType === 'danger'
+  }" role="alert" id="sources-message-banner">
+    <div class="d-flex align-items-center gap-2">
+      <mat-icon>{{ messageType === 'success' ? 'check_circle' : 'error' }}</mat-icon>
+      <span>{{ message }}</span>
+    </div>
+  </div>
+
+  <!-- Sources Table Grid -->
+  <div class="glass-panel overflow-hidden" id="sources-table-panel">
+    <div *ngIf="loading && sources.length === 0" class="d-flex justify-content-center align-items-center py-5" id="sources-loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading && sources.length === 0" class="text-center py-5 text-secondary" id="sources-empty-state">
+      <mat-icon style="font-size: 3rem; width: auto; height: auto;" class="mb-2">folder_open</mat-icon>
+      <p>No log files have been detected yet. Place a .log or .txt file in the monitored directory.</p>
+    </div>
+
+    <div *ngIf="sources.length > 0" class="table-responsive" id="sources-table-wrapper">
+      <table class="table table-dark table-hover m-0 align-middle text-secondary font-mono" id="sources-data-table">
+        <thead>
+          <tr>
+            <th>Service Name</th>
+            <th>File Name</th>
+            <th>File Path</th>
+            <th class="text-end">Byte Offset</th>
+            <th>Last Ingested</th>
+            <th>Status</th>
+            <th class="text-end" style="width: 150px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let src of sources; let idx = index" [id]="'source-row-' + src.id">
+            <td class="text-white fw-semibold">{{ src.service_name }}</td>
+            <td class="text-white">{{ src.file_name }}</td>
+            <td class="small text-truncate" style="max-width: 250px;" [title]="src.file_path">{{ src.file_path }}</td>
+            <td class="text-end text-info">{{ src.last_processed_position | number }} bytes</td>
+            <td>
+              <span *ngIf="src.last_processed_time; else neverProcessed" class="small text-white">
+                {{ src.last_processed_time | date:'yyyy-MM-dd HH:mm:ss' }}
+              </span>
+              <ng-template #neverProcessed><span class="text-muted small">Never</span></ng-template>
+            </td>
+            <td>
+              <span class="badge-log" [ngClass]="{
+                'badge-status-completed': src.status === 'completed',
+                'badge-status-processing': src.status === 'processing',
+                'badge-status-new': src.status === 'new',
+                'badge-status-failed': src.status === 'failed'
+              }">{{ src.status }}</span>
+            </td>
+            <td class="text-end">
+              <button mat-stroked-button color="primary" [disabled]="reprocessingIds.has(src.id) || reprocessingAll" (click)="reprocessFile(src)" [id]="'btn-reprocess-' + src.id">
+                <mat-icon *ngIf="!reprocessingIds.has(src.id)">sync</mat-icon>
+                <mat-spinner *ngIf="reprocessingIds.has(src.id)" diameter="20" class="d-inline-block me-1"></mat-spinner>
+                Reprocess
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

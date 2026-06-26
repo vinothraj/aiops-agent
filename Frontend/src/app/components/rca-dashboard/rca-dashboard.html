@@ -1,0 +1,74 @@
+<div class="container-fluid py-4" id="rca-dashboard-container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="text-white m-0 d-flex align-items-center gap-2">
+        <mat-icon style="color: var(--color-info); font-size: 2.2rem; width: auto; height: auto;">psychology</mat-icon>
+        Root Cause Analysis History
+      </h1>
+      <p class="text-secondary m-0">Historical AI-powered root cause analyses for critical system failures.</p>
+    </div>
+    <button mat-flat-button color="primary" routerLink="/logs" style="background: var(--accent-gradient);">
+      <mat-icon>search</mat-icon> Analyze New Log
+    </button>
+  </div>
+
+  <div class="glass-panel overflow-hidden" id="rca-history-panel">
+    <div *ngIf="loading" class="d-flex justify-content-center align-items-center py-5">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading && error" class="text-center py-5 text-danger">
+      <mat-icon style="font-size: 3rem; width: auto; height: auto;" class="mb-2">error_outline</mat-icon>
+      <p>{{ error }}</p>
+    </div>
+
+    <div *ngIf="!loading && !error && analyses.length === 0" class="text-center py-5 text-secondary">
+      <mat-icon style="font-size: 3rem; width: auto; height: auto;" class="mb-2 text-secondary opacity-50">history_toggle_off</mat-icon>
+      <p class="mt-2 text-white">No historical analyses found.</p>
+      <p class="small">Trigger an RCA from the Log Explorer to see it here.</p>
+    </div>
+
+    <div *ngIf="!loading && analyses.length > 0" class="row g-4 p-4">
+      <div class="col-12 col-xl-6" *ngFor="let rca of analyses">
+        <div class="bg-black bg-opacity-40 p-4 rounded border border-secondary border-opacity-25 h-100 d-flex flex-column hover-card">
+          <div class="d-flex justify-content-between align-items-start mb-3 border-bottom border-secondary border-opacity-10 pb-3">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge" [ngClass]="{'bg-danger': rca.severity.includes('P1') || rca.severity.includes('P2'), 'bg-warning text-dark': rca.severity.includes('P3'), 'bg-info text-dark': rca.severity.includes('P4'), 'bg-secondary': !rca.severity}">{{ rca.severity }}</span>
+                <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-25">{{ rca.root_cause_category }}</span>
+              </div>
+              <div class="small text-secondary font-mono">{{ rca.created_at | date:'yyyy-MM-dd HH:mm:ss' }}</div>
+            </div>
+            <div class="text-end">
+              <div class="small text-secondary mb-1">AI Confidence</div>
+              <div class="d-flex align-items-center gap-2 justify-content-end">
+                <div class="progress" style="width: 40px; height: 4px; background-color: rgba(255,255,255,0.1);">
+                  <div class="progress-bar bg-success" role="progressbar" [style.width.%]="rca.confidence_score * 100"></div>
+                </div>
+                <span class="text-white small fw-semibold">{{ (rca.confidence_score * 100).toFixed(0) }}%</span>
+              </div>
+            </div>
+          </div>
+          
+          <h6 class="text-white fw-bold mb-2 flex-grow-0">{{ rca.root_cause }}</h6>
+          <p class="text-secondary small mb-4 flex-grow-1">{{ rca.summary }}</p>
+
+          <div class="mt-auto">
+            <div class="small fw-semibold text-uppercase text-secondary mb-2">Affected Services</div>
+            <div class="d-flex flex-wrap gap-1 mb-3">
+              <span class="badge bg-dark border border-secondary border-opacity-25 text-white" *ngFor="let svc of rca.services">{{ svc.service_name }}</span>
+              <span class="small text-secondary fst-italic" *ngIf="!rca.services || rca.services.length === 0">None identified</span>
+            </div>
+
+            <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 p-3 rounded d-flex gap-2 align-items-center">
+              <mat-icon class="text-primary flex-shrink-0" style="font-size: 1.2rem; width: auto; height: auto;">lightbulb</mat-icon>
+              <div class="text-white small text-truncate" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" [title]="rca.recommendation">
+                {{ rca.recommendation ? rca.recommendation.split('\n')[0] : 'No recommendation available' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

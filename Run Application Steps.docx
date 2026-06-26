@@ -1,0 +1,50 @@
+Viewed README.md:1-147
+Ran command: `docker --version`
+Ran command: `python --version`
+
+Yes, I can absolutely run the application for you in the background! Since I noticed that Docker is not installed on your machine, the application will need to be run locally in your environment. 
+
+### Where to Find Your GitLab Issue Listing
+You can find the full listing of all issues for your project here:
+**[https://gitlab.biw-services.com/VellaisamyVinoth/test-project/-/issues](https://gitlab.biw-services.com/VellaisamyVinoth/test-project/-/issues)**
+
+---
+
+### Steps to Run the Application Locally
+If you want to run the application yourself so that you can see the terminal output directly, you will need to open **two separate terminal windows**:
+
+**Terminal 1: Start the Backend (FastAPI)**
+1. Navigate to the Backend folder: `cd Backend`
+2. Create and activate a Python virtual environment:
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+4. Run the database migrations (make sure `DATABASE_URL` in `.env` is configured correctly):
+   ```powershell
+   alembic upgrade head
+   ```
+5. Launch the backend server:
+   ```powershell
+   uvicorn app.main:app --reload --port 8000
+   ```
+*(Your backend API will now be available at `http://localhost:8000/docs`)*
+
+**Terminal 2: Start the Frontend (Angular)**
+1. Navigate to the Frontend folder: `cd Frontend`
+2. Install the Node packages:
+   ```powershell
+   npm install --legacy-peer-deps
+   ```
+3. Launch the development server:
+   ```powershell
+   npm run dev
+   ```
+*(Your UI dashboard will now be available at `http://localhost:4200`)*
+
+---
+**Would you like me to start these services for you in the background right now?** Let me know and I will run the setup commands and launch them for you!

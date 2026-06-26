@@ -1,0 +1,28 @@
+# Walkthrough: Enterprise AI Root Cause Analysis Agent (Module 3)
+
+I have successfully integrated the Gemini-powered Root Cause Analysis Agent into the AIOps Platform.
+
+## What Was Completed
+
+### 1. Backend Finalization
+- **Dependencies**: Verified that `google-generativeai` is installed.
+- **Database Migrations**: Verified that the 4 new SQLite tables (`log_analyses`, `analysis_patterns`, `analysis_dependencies`, `analysis_services`) exist in the database.
+- **API Tests**: Validated that the backend endpoints under `/api/rca/` are exposed and functioning.
+
+### 2. Frontend Integration
+- **API Service**: Added the `triggerRcaAnalysis`, `getRcaAnalysis`, and `getAllRcaAnalyses` methods to the central `api.service.ts`.
+- **Log Explorer Enhancement**: Integrated an inline "AI Root Cause Analysis" section directly into the expanded log detail row in the Log Viewer.
+  - Added a button to manually trigger analysis for ERROR or FATAL logs.
+  - Implemented a sleek glassmorphic UI to display the structured output from Gemini, including Root Cause, Severity, Business/Technical Impact, Confidence Score, Patterns, Dependencies, and Recommended Actions.
+- **RCA History Dashboard**: Built a dedicated `/rca` page to display the historical archive of all AI root cause analyses across the platform.
+- **Navigation**: Wired up the new dashboard into the main sidebar navigation routing.
+
+## Verification
+
+> [!TIP]
+> **Try it out!** 
+> 1. Make sure your `GEMINI_API_KEY` is set correctly in the `Backend/.env` file.
+> 2. Open the UI, navigate to the **Log Explorer**, filter for **ERROR** logs, click on an error to expand it, and click **Generate Root Cause Analysis**.
+> 3. Check out the **AI RCA** tab in the navigation menu to see a history of all the RCA reports you generate over time.
+
+Everything has been styled carefully using the project's native glassmorphism design system to ensure a seamless and premium experience.
