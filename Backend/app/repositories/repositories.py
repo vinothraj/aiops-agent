@@ -20,6 +20,7 @@ class LogFileRepository:
             file_name=obj_in.file_name,
             file_path=obj_in.file_path,
             service_name=obj_in.service_name,
+            instance_id=obj_in.instance_id,
             last_processed_position=obj_in.last_processed_position,
             status=obj_in.status
         )
@@ -49,15 +50,18 @@ class LogRepository:
         skip: int = 0,
         limit: int = 100,
         service_name: Optional[str] = None,
+        instance_id: Optional[str] = None,
         log_level: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         search_query: Optional[str] = None
     ) -> List[Log]:
         query = select(Log)
-        
+
         if service_name:
             query = query.where(Log.service_name == service_name)
+        if instance_id:
+            query = query.where(Log.instance_id == instance_id)
         if log_level:
             query = query.where(Log.log_level == log_level)
         if start_date:
@@ -79,6 +83,7 @@ class LogRepository:
         db_obj = Log(
             timestamp=obj_in.timestamp,
             service_name=obj_in.service_name,
+            instance_id=obj_in.instance_id,
             log_level=obj_in.log_level,
             message=obj_in.message,
             stacktrace=obj_in.stacktrace,
@@ -95,6 +100,7 @@ class LogRepository:
             Log(
                 timestamp=obj.timestamp,
                 service_name=obj.service_name,
+                instance_id=obj.instance_id,
                 log_level=obj.log_level,
                 message=obj.message,
                 stacktrace=obj.stacktrace,
@@ -117,12 +123,14 @@ class LogRepository:
         error_logs = db.scalar(select(func.count(Log.id)).where(Log.log_level == "ERROR")) or 0
         warning_logs = db.scalar(select(func.count(Log.id)).where(Log.log_level == "WARNING")) or 0
         services = db.scalar(select(func.count(func.distinct(Log.service_name)))) or 0
-        
+        instances = db.scalar(select(func.count(func.distinct(Log.instance_id)))) or 0
+
         return {
             "total_logs": total_logs,
             "error_logs": error_logs,
             "warning_logs": warning_logs,
-            "services": services
+            "services": services,
+            "instances": instances
         }
 
 log_file_repo = LogFileRepository()

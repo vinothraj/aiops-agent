@@ -18,24 +18,44 @@ from app.services.parser import LogParser
 logger = logging.getLogger(__name__)
 parser = LogParser()
 
-def get_service_name(file_path: str, monitored_dir: str) -> str:
+# Matches folder names that identify a single deployment instance rather than a
+# service, e.g. instance01, instance-02, node3, host_4, pod07, prod0353m1 (case-insensitive).
+# Configurable via settings.INSTANCE_FOLDER_PATTERN for environments with different naming.
+INSTANCE_FOLDER_PATTERN = re.compile(settings.INSTANCE_FOLDER_PATTERN, re.IGNORECASE)
+
+def parse_source_identity(file_path: str, monitored_dir: str) -> tuple[str, Optional[str]]:
     """
-    Determines service name based on directory structure.
-    If Logs/ProductService/application.log -> ProductService
-    If Logs/application.log -> application
+    Determines (service_name, instance_id) based on directory structure.
+
+    Examples (relative to the monitored root):
+      instance01/ecommerce-site.log        -> service="ecommerce-site", instance="instance01"
+      ProductService/instance02/app.log    -> service="ProductService", instance="instance02"
+      ProductService/application.log       -> service="ProductService", instance=None
+      application.log                      -> service="application",   instance=None
     """
     norm_path = os.path.normpath(file_path)
     norm_monitored = os.path.normpath(monitored_dir)
-    
+
     rel_path = os.path.relpath(norm_path, norm_monitored)
     parts = rel_path.split(os.sep)
-    
-    if len(parts) > 1:
-        return parts[0]
+    dir_parts = parts[:-1]
+    filename = parts[-1]
+
+    instance_id: Optional[str] = None
+    service_parts = []
+    for part in dir_parts:
+        if instance_id is None and INSTANCE_FOLDER_PATTERN.match(part):
+            instance_id = part
+        else:
+            service_parts.append(part)
+
+    if service_parts:
+        service_name = service_parts[0]
     else:
-        base = os.path.basename(file_path)
-        name, _ = os.path.splitext(base)
-        return name
+        name, _ = os.path.splitext(filename)
+        service_name = name
+
+    return service_name, instance_id
 
 class LogFileProcessor:
     @staticmethod
@@ -43,8 +63,8 @@ class LogFileProcessor:
         """
         Determines whether the file should be processed based on:
         1. Extension (.log or .txt)
-        2. Modification time (within last 24 hours)
-        3. Excludes historical/rotated files containing date patterns, 
+        2. Modification time (within settings.LOG_FILE_MAX_AGE_HOURS)
+        3. Excludes historical/rotated files containing date patterns,
            except if the date corresponds to today or yesterday.
         """
         if not os.path.isfile(file_path):
@@ -54,10 +74,10 @@ class LogFileProcessor:
         if ext.lower() not in [".log", ".txt"]:
             return False
 
-        # Filter by modification time (within last 24 hours)
+        # Filter by modification time (configurable freshness window)
         try:
             mtime = os.path.getmtime(file_path)
-            if time.time() - mtime > 86400:  # 24 hours in seconds
+            if time.time() - mtime > settings.LOG_FILE_MAX_AGE_HOURS * 3600:
                 return False
         except Exception as e:
             logger.error(f"Error checking modification time for {file_path}: {e}")
@@ -106,7 +126,7 @@ class LogFileProcessor:
         db = SessionLocal()
         try:
             file_name = os.path.basename(file_path)
-            service_name = get_service_name(file_path, settings.MONITORED_LOGS_DIR)
+            service_name, instance_id = parse_source_identity(file_path, settings.MONITORED_LOGS_DIR)
 
             # 1. Fetch or create log file record
             db_log_file = log_file_repo.get_by_path(db, file_path)
@@ -117,6 +137,7 @@ class LogFileProcessor:
                         file_name=file_name,
                         file_path=file_path,
                         service_name=service_name,
+                        instance_id=instance_id,
                         last_processed_position=0,
                         status="new"
                     )
@@ -162,7 +183,10 @@ class LogFileProcessor:
 
             # 5. Parse and save logs
             if lines_to_process:
-                parsed_logs = parser.parse_lines(lines_to_process, file_name, file_path)
+                parsed_logs = parser.parse_lines(
+                    lines_to_process, file_name, file_path,
+                    default_service=service_name, instance_id=instance_id
+                )
                 if parsed_logs:
                     log_repo.create_many(db, parsed_logs)
 
@@ -228,10 +252,24 @@ class LogWatcherService:
         self.observer.schedule(event_handler, settings.MONITORED_LOGS_DIR, recursive=True)
         self.observer.start()
         logger.info(f"Watchdog Observer started on: {settings.MONITORED_LOGS_DIR}")
-        
+
+        # Periodic full re-scan safety net: filesystem change events aren't always
+        # delivered reliably across bind/network mounts, so this guarantees files
+        # are eventually caught even if an individual on_modified/on_created event
+        # was dropped. Byte-offset tracking makes repeated scans of unchanged
+        # files a no-op, so this is safe to run indefinitely.
+        scan_interval = max(settings.LOG_SCAN_INTERVAL_SECONDS, 1)
+        elapsed = 0
         try:
             while self.running:
                 time.sleep(1)
+                elapsed += 1
+                if elapsed >= scan_interval:
+                    elapsed = 0
+                    try:
+                        self.scan_directory()
+                    except Exception as e:
+                        logger.error(f"Error during periodic log directory scan: {str(e)}")
         except Exception as e:
             logger.error(f"Error in Watchdog Observer loop: {str(e)}")
         finally:

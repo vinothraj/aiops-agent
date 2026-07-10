@@ -33,8 +33,9 @@ services:
       - PROJECT_NAME=AIOps Platform
       - API_V1_STR=/api
     volumes:
-      # Mount the local Logs folder so changes in Logs/ appear inside the container
-      - ./Logs:/var/log/monitored
+      # Mount the local Logs folder read-only so changes in Logs/ appear inside the
+      # container while guaranteeing the platform can never modify or delete source logs.
+      - ./Logs:/var/log/monitored:ro
     depends_on:
       db:
         condition: service_healthy

@@ -20,7 +20,7 @@
       </div>
       <div>
         <h5 class="text-white m-0">Log Watcher Working Directory</h5>
-        <code class="text-info d-block mt-1 font-mono fs-6" id="monitored-directory-path">C:/Logs (Supports nested folders /Service/logs)</code>
+        <code class="text-info d-block mt-1 font-mono fs-6" id="monitored-directory-path">/var/log/monitored (read-only) — supports /Service/logs and /instanceNN/logs nesting</code>
       </div>
     </div>
   </div>
@@ -52,6 +52,7 @@
         <thead>
           <tr>
             <th>Service Name</th>
+            <th>Instance</th>
             <th>File Name</th>
             <th>File Path</th>
             <th class="text-end">Byte Offset</th>
@@ -63,6 +64,10 @@
         <tbody>
           <tr *ngFor="let src of sources; let idx = index" [id]="'source-row-' + src.id">
             <td class="text-white fw-semibold">{{ src.service_name }}</td>
+            <td>
+              <span *ngIf="src.instance_id; else noInstanceSrc" class="badge bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-white fw-normal">{{ src.instance_id }}</span>
+              <ng-template #noInstanceSrc><span class="text-secondary small fst-italic">—</span></ng-template>
+            </td>
             <td class="text-white">{{ src.file_name }}</td>
             <td class="small text-truncate" style="max-width: 250px;" [title]="src.file_path">{{ src.file_path }}</td>
             <td class="text-end text-info">{{ src.last_processed_position | number }} bytes</td>

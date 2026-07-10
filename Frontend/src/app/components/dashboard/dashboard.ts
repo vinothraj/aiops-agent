@@ -26,7 +26,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     total_logs: 0,
     error_logs: 0,
     warning_logs: 0,
-    services: 0
+    services: 0,
+    instances: 0
   };
   recentErrors: LogResponse[] = [];
   loading = true;

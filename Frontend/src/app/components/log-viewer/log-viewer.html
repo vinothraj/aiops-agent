@@ -8,7 +8,7 @@
   <div class="glass-panel p-4 mb-4" id="log-filters-panel">
     <div class="row g-3">
       <!-- Search Input -->
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-3">
         <label for="log-search-input" class="form-label text-secondary fw-semibold small">Keyword Search</label>
         <div class="input-group">
           <input type="text" id="log-search-input" class="form-control bg-dark text-white border-secondary border-opacity-25" placeholder="Search message or stacktrace..." [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()">
@@ -21,6 +21,15 @@
         <select id="filter-service-select" class="form-select bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="selectedService" (change)="applyFilters()">
           <option value="">All Services</option>
           <option *ngFor="let s of services" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <!-- Instance Select -->
+      <div class="col-12 col-sm-6 col-md-2">
+        <label for="filter-instance-select" class="form-label text-secondary fw-semibold small">Instance</label>
+        <select id="filter-instance-select" class="form-select bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="selectedInstance" (change)="applyFilters()">
+          <option value="">All Instances</option>
+          <option *ngFor="let i of instances" [value]="i">{{ i }}</option>
         </select>
       </div>
 
@@ -78,6 +87,7 @@
             <th style="width: 180px;">Timestamp</th>
             <th style="width: 100px;">Level</th>
             <th style="width: 150px;">Service</th>
+            <th style="width: 130px;">Instance</th>
             <th>Message</th>
             <th style="width: 50px;"></th>
           </tr>
@@ -98,6 +108,10 @@
                 }">{{ log.log_level }}</span>
               </td>
               <td class="text-white fw-semibold">{{ log.service_name }}</td>
+              <td>
+                <span *ngIf="log.instance_id; else noInstance" class="badge bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-white fw-normal">{{ log.instance_id }}</span>
+                <ng-template #noInstance><span class="text-secondary small fst-italic">—</span></ng-template>
+              </td>
               <td class="text-truncate text-white" style="max-width: 400px;">
                 {{ log.message }}
               </td>
@@ -108,15 +122,19 @@
 
             <!-- Expanded Details Row -->
             <tr *ngIf="expandedLogId === log.id" class="log-detail-row bg-black bg-opacity-40" [id]="'log-detail-row-' + log.id">
-              <td colspan="5" class="p-4 text-secondary">
+              <td colspan="6" class="p-4 text-secondary">
                 <div class="d-flex flex-column gap-3">
                   <!-- Header details -->
                   <div class="row g-3">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                       <div class="small text-uppercase fw-semibold mb-1" style="color: var(--text-secondary);">Source File Path</div>
                       <div class="text-white small bg-black bg-opacity-50 p-2 rounded border border-secondary border-opacity-10">{{ log.file_path }}</div>
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
+                      <div class="small text-uppercase fw-semibold mb-1" style="color: var(--text-secondary);">Instance</div>
+                      <div class="text-white small bg-black bg-opacity-50 p-2 rounded border border-secondary border-opacity-10">{{ log.instance_id || 'Not instance-scoped' }}</div>
+                    </div>
+                    <div class="col-12 col-md-4">
                       <div class="small text-uppercase fw-semibold mb-1" style="color: var(--text-secondary);">Ingested Timestamp</div>
                       <div class="text-white small bg-black bg-opacity-50 p-2 rounded border border-secondary border-opacity-10">{{ log.created_at | date:'yyyy-MM-dd HH:mm:ss.SSS' }}</div>
                     </div>

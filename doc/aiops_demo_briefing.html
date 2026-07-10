@@ -1,0 +1,488 @@
+<title>AIOps Platform — Demo Briefing</title>
+<style>
+  :root {
+    --bg: #0a0c14;
+    --bg-alt: #0d1019;
+    --surface: #131725;
+    --surface-2: #171c2e;
+    --border: rgba(148,163,215,0.14);
+    --border-strong: rgba(148,163,215,0.26);
+    --ink: #eef0fa;
+    --ink-dim: #929ac2;
+    --ink-faint: #5c6389;
+    --accent: #6d5ef8;
+    --accent-2: #45c4f0;
+    --good: #34d399;
+    --warn: #f5a623;
+    --critical: #fb4570;
+    --font-display: 'Bahnschrift', 'Segoe UI Semibold', 'Arial Narrow', sans-serif;
+    --font-body: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'Cascadia Code', 'Cascadia Mono', Consolas, 'SFMono-Regular', monospace;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f5fb;
+      --bg-alt: #eceefa;
+      --surface: #ffffff;
+      --surface-2: #f7f8fd;
+      --border: rgba(52,58,110,0.12);
+      --border-strong: rgba(52,58,110,0.22);
+      --ink: #171a2c;
+      --ink-dim: #565d82;
+      --ink-faint: #8b91b3;
+      --accent: #5647d9;
+      --accent-2: #0d84ab;
+      --good: #0f9d6e;
+      --warn: #b5760a;
+      --critical: #d92858;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0c14; --bg-alt: #0d1019; --surface: #131725; --surface-2: #171c2e;
+    --border: rgba(148,163,215,0.14); --border-strong: rgba(148,163,215,0.26);
+    --ink: #eef0fa; --ink-dim: #929ac2; --ink-faint: #5c6389;
+    --accent: #6d5ef8; --accent-2: #45c4f0;
+    --good: #34d399; --warn: #f5a623; --critical: #fb4570;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5fb; --bg-alt: #eceefa; --surface: #ffffff; --surface-2: #f7f8fd;
+    --border: rgba(52,58,110,0.12); --border-strong: rgba(52,58,110,0.22);
+    --ink: #171a2c; --ink-dim: #565d82; --ink-faint: #8b91b3;
+    --accent: #5647d9; --accent-2: #0d84ab;
+    --good: #0f9d6e; --warn: #b5760a; --critical: #d92858;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); }
+
+  .briefing {
+    font-family: var(--font-body);
+    color: var(--ink);
+    background:
+      radial-gradient(1100px 480px at 12% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
+      var(--bg);
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 3.2rem 1.5rem 5rem;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.1rem;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--good);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 20%, transparent);
+    flex: none;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.9rem, 4vw, 2.9rem);
+    line-height: 1.08;
+    letter-spacing: 0.002em;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+    max-width: 18ch;
+  }
+
+  .lede {
+    font-size: 1.08rem;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    max-width: 62ch;
+    margin: 0 0 2.6rem;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  section { margin-bottom: 3.4rem; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.9rem;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 1.6rem;
+    text-wrap: balance;
+  }
+
+  /* ---- Architecture pipeline ---- */
+  .pipeline-scroll { overflow-x: auto; padding-bottom: 0.4rem; }
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-width: 780px;
+  }
+  .stage {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.1rem 1.2rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .stage + .stage { margin-left: 1.55rem; }
+  .connector {
+    width: 1.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-left: -1.55rem;
+    flex: none;
+    order: -1;
+  }
+  .stage:first-child { order: 0; }
+  .pipeline-row { display: flex; align-items: stretch; min-width: 780px; }
+  .arrow {
+    flex: none;
+    width: 1.8rem;
+    align-self: center;
+    color: var(--ink-faint);
+    position: relative;
+    height: 2px;
+    background: linear-gradient(90deg, var(--border-strong), var(--accent-2));
+  }
+  .arrow::after {
+    content: "";
+    position: absolute;
+    right: -1px; top: 50%;
+    width: 6px; height: 6px;
+    border-top: 2px solid var(--accent-2);
+    border-right: 2px solid var(--accent-2);
+    transform: translateY(-50%) rotate(45deg);
+  }
+  .pulse-dot {
+    position: absolute;
+    top: 50%; left: 0;
+    width: 5px; height: 5px;
+    margin-top: -2.5px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    box-shadow: 0 0 6px 1px var(--accent-2);
+    animation: travel 3.2s linear infinite;
+  }
+  @keyframes travel {
+    0% { left: 0; opacity: 0; }
+    8% { opacity: 1; }
+    92% { opacity: 1; }
+    100% { left: calc(100% - 5px); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-dot { animation: none; opacity: .6; left: 45%; }
+  }
+
+  .stage-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+    flex: none;
+    margin-bottom: 0.2rem;
+  }
+  .stage-icon svg { width: 16px; height: 16px; }
+  .stage-title { font-weight: 600; font-size: 0.93rem; color: var(--ink); }
+  .stage-detail { font-size: 0.8rem; color: var(--ink-dim); line-height: 1.45; }
+  .stage-tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ---- Flow timeline ---- */
+  .timeline { position: relative; padding-left: 2.4rem; }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 0.62rem; top: 0.4rem; bottom: 0.4rem;
+    width: 1px;
+    background: linear-gradient(var(--border-strong), var(--border-strong));
+  }
+  .step { position: relative; padding-bottom: 1.9rem; }
+  .step:last-child { padding-bottom: 0; }
+  .step-num {
+    position: absolute;
+    left: -2.4rem; top: 0.05rem;
+    width: 1.35rem; height: 1.35rem;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+  .step-title { font-weight: 600; font-size: 1.02rem; color: var(--ink); }
+  .step-tag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-2);
+    border: 1px solid color-mix(in srgb, var(--accent-2) 40%, transparent);
+    border-radius: 4px;
+    padding: 0.12rem 0.4rem;
+    text-transform: uppercase;
+  }
+  .step-desc { font-size: 0.92rem; color: var(--ink-dim); line-height: 1.55; max-width: 60ch; margin: 0 0 0.5rem; }
+  .step-cue {
+    font-size: 0.83rem;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 0.55rem 0.8rem;
+    display: inline-block;
+  }
+  .step-cue b { color: var(--accent-2); font-weight: 600; }
+  .step-highlight .step-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ---- Proof strip ---- */
+  .proof {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .proof-cell {
+    background: var(--surface);
+    padding: 1.3rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .proof-value {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .proof-value.good { color: var(--good); }
+  .proof-label { font-size: 0.76rem; color: var(--ink-dim); line-height: 1.35; }
+
+  @media (max-width: 640px) {
+    .proof { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---- Talking points ---- */
+  .talking-points {
+    background: linear-gradient(155deg, color-mix(in srgb, var(--accent) 10%, var(--surface)), var(--surface));
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 1.7rem 1.8rem;
+  }
+  .talking-points ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.1rem; }
+  .talking-points li { display: flex; gap: 0.9rem; align-items: flex-start; }
+  .quote-mark {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--accent-2);
+    line-height: 1;
+    flex: none;
+  }
+  .talking-points strong { color: var(--ink); font-weight: 600; }
+  .talking-points span { color: var(--ink-dim); font-size: 0.92rem; line-height: 1.5; }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.4rem;
+    align-items: center;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--border);
+  }
+  footer span {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.03em;
+  }
+</style>
+
+<div class="briefing">
+
+  <div class="eyebrow">Live in staging &middot; ready for Monday walkthrough</div>
+  <h1>From a raw log line<br>to a resolved incident</h1>
+  <p class="lede">
+    A working tour of the Enterprise AIOps Platform: how it watches your five production
+    instances, tells you what broke and why, and routes the fix to the right person —
+    <strong>before</strong> anyone goes looking through a log file.
+  </p>
+
+  <section>
+    <div class="section-label">Architecture</div>
+    <div class="section-title">Five servers in, one clear picture out</div>
+    <div class="pipeline-scroll">
+      <div class="pipeline-row">
+        <div class="stage">
+          <div class="stage-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="10.5" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="5" rx="1"/></svg>
+          </div>
+          <div class="stage-title">Production instances</div>
+          <div class="stage-detail">prod0353m1&ndash;m5 &mdash; five app servers, one logical service</div>
+          <div class="stage-tag">SOURCE</div>
+        </div>
+        <div class="arrow"><div class="pulse-dot"></div></div>
+        <div class="stage">
+          <div class="stage-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>
+          </div>
+          <div class="stage-title">Log watcher</div>
+          <div class="stage-detail">Read-only tail, multiline stack-trace grouping, 30s safety-net rescan</div>
+          <div class="stage-tag">INGEST</div>
+        </div>
+        <div class="arrow"><div class="pulse-dot" style="animation-delay:.6s"></div></div>
+        <div class="stage">
+          <div class="stage-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.66 3.58 3 8 3s8-1.34 8-3v-13"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>
+          </div>
+          <div class="stage-title">Postgres &middot; Qdrant</div>
+          <div class="stage-detail">Structured logs, plus a vector store of runbooks &amp; past incidents</div>
+          <div class="stage-tag">STORE</div>
+        </div>
+        <div class="arrow"><div class="pulse-dot" style="animation-delay:1.2s"></div></div>
+        <div class="stage">
+          <div class="stage-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2.5l2.2 4.9 5.3.6-4 3.7 1.1 5.3L12 14.3l-4.6 2.7 1.1-5.3-4-3.7 5.3-.6z"/></svg>
+          </div>
+          <div class="stage-title">FastAPI &middot; Gemini</div>
+          <div class="stage-detail">Root cause analysis, incident triage, GitLab &amp; notification routing</div>
+          <div class="stage-tag">REASON</div>
+        </div>
+        <div class="arrow"><div class="pulse-dot" style="animation-delay:1.8s"></div></div>
+        <div class="stage">
+          <div class="stage-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3.5" width="18" height="13" rx="1.5"/><path d="M8 21h8M12 16.5V21"/></svg>
+          </div>
+          <div class="stage-title">Dashboard</div>
+          <div class="stage-detail">What you'll actually click through in the demo</div>
+          <div class="stage-tag">PRESENT</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">Demo script &middot; 7 steps</div>
+    <div class="section-title">The flow, in the order you'll show it</div>
+    <div class="timeline">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-head"><span class="step-title">Ingest</span><span class="step-tag">Invisible</span></div>
+        <p class="step-desc">The watcher tails all five instance folders continuously, read-only, and correctly groups them as one service rather than five.</p>
+        <div class="step-cue"><b>Say:</b> "This already matches our real five-server layout &mdash; not a demo approximation."</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-head"><span class="step-title">Overview</span><span class="step-tag">Dashboard</span></div>
+        <p class="step-desc">System Observability Center: total volume, error/warning split, services and instances currently reporting, auto-refreshing.</p>
+        <div class="step-cue"><b>Click:</b> open the dashboard, let the numbers land first.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-head"><span class="step-title">Explore</span><span class="step-tag">Log Explorer</span></div>
+        <p class="step-desc">Filter by service, instance, severity or keyword. Expand any row for the full message, stack trace, and source instance.</p>
+        <div class="step-cue"><b>Click:</b> filter to a single instance, expand an error row.</div>
+      </div>
+
+      <div class="step step-highlight">
+        <div class="step-num">4</div>
+        <div class="step-head"><span class="step-title">Diagnose</span><span class="step-tag">AI &middot; the moment</span></div>
+        <p class="step-desc">Gemini reads the error, checks it against past incidents and runbooks in the knowledge base, and returns root cause, impact, confidence, and a fix.</p>
+        <div class="step-cue"><b>Click:</b> "Generate Root Cause Analysis" on a live error &mdash; this is the line that sells the room.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-head"><span class="step-title">Triage</span><span class="step-tag">Incident Queue</span></div>
+        <p class="step-desc">Every incident is scored on risk, business impact, technical impact and frequency, then assigned a priority and a recommended action.</p>
+        <div class="step-cue"><b>Say:</b> "The system decides what deserves attention &mdash; nobody has to scan logs to find out."</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-head"><span class="step-title">Track</span><span class="step-tag">GitLab</span></div>
+        <p class="step-desc">High-priority incidents sync straight into GitLab as tracked issues, with activity history attached.</p>
+        <div class="step-cue"><b>Show:</b> an issue that was opened automatically, not by hand.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-head"><span class="step-title">Notify</span><span class="step-tag">Teams &middot; Email</span></div>
+        <p class="step-desc">Alerts route to the right channel by root-cause category, with retry on failed sends and daily/weekly digests for leadership.</p>
+        <div class="step-cue"><b>Say:</b> "Database errors reach the DBA channel automatically &mdash; no on-call paging chain."</div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">Verified today</div>
+    <div class="section-title">Numbers from the actual environment</div>
+    <div class="proof">
+      <div class="proof-cell"><div class="proof-value">20,311</div><div class="proof-label">Logs ingested across all instances</div></div>
+      <div class="proof-cell"><div class="proof-value">5</div><div class="proof-label">Instances reporting &mdash; prod0353m1&ndash;m5</div></div>
+      <div class="proof-cell"><div class="proof-value">1</div><div class="proof-label">Service correctly unified across them</div></div>
+      <div class="proof-cell"><div class="proof-value good">100%</div><div class="proof-label">Read-only &mdash; verified at the OS level</div></div>
+    </div>
+  </section>
+
+  <section style="margin-bottom: 2rem;">
+    <div class="section-label">If you only say three things</div>
+    <div class="talking-points">
+      <ul>
+        <li>
+          <span class="quote-mark">&ldquo;</span>
+          <span><strong>This already matches our production topology.</strong> Five real instances, correctly unified as one service &mdash; not a hypothetical.</span>
+        </li>
+        <li>
+          <span class="quote-mark">&ldquo;</span>
+          <span><strong>Zero risk to source logs.</strong> The mount is read-only at the operating-system level &mdash; we tested a write from inside the container and it was refused.</span>
+        </li>
+        <li>
+          <span class="quote-mark">&ldquo;</span>
+          <span><strong>From error to answer in seconds.</strong> The AI doesn't just show a log line &mdash; it hands back a root cause, an impact assessment, and a fix.</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <span>ANGULAR</span><span>&middot;</span><span>FASTAPI</span><span>&middot;</span><span>POSTGRESQL</span><span>&middot;</span><span>QDRANT</span><span>&middot;</span><span>GEMINI</span><span>&middot;</span><span>GITLAB</span>
+  </footer>
+
+</div>

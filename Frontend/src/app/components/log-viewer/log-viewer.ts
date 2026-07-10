@@ -26,9 +26,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 export class LogViewerComponent implements OnInit {
   logs: LogResponse[] = [];
   services: string[] = [];
-  
+  instances: string[] = [];
+
   // Filters
   selectedService = '';
+  selectedInstance = '';
   selectedLevel = '';
   startDate = '';
   endDate = '';
@@ -59,6 +61,12 @@ export class LogViewerComponent implements OnInit {
         // Extract unique service names
         const unique = new Set(sources.map(s => s.service_name));
         this.services = Array.from(unique).sort();
+
+        // Extract unique instance ids (skip files with no instance dimension)
+        const uniqueInstances = new Set(
+          sources.map(s => s.instance_id).filter((i): i is string => !!i)
+        );
+        this.instances = Array.from(uniqueInstances).sort();
       },
       error: (err) => console.error('Error fetching services list', err)
     });
@@ -73,6 +81,7 @@ export class LogViewerComponent implements OnInit {
 
     this.apiService.getLogs({
       service_name: this.selectedService || undefined,
+      instance_id: this.selectedInstance || undefined,
       log_level: this.selectedLevel || undefined,
       start_date: startStr,
       end_date: endStr,
@@ -105,6 +114,7 @@ export class LogViewerComponent implements OnInit {
 
   resetFilters() {
     this.selectedService = '';
+    this.selectedInstance = '';
     this.selectedLevel = '';
     this.startDate = '';
     this.endDate = '';

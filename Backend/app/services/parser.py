@@ -61,17 +61,26 @@ class LogParser:
         
         return None
 
-    def parse_lines(self, lines: List[str], file_name: str, file_path: str) -> List[LogCreate]:
+    def parse_lines(
+        self,
+        lines: List[str],
+        file_name: str,
+        file_path: str,
+        default_service: Optional[str] = None,
+        instance_id: Optional[str] = None
+    ) -> List[LogCreate]:
         """
         Parses multiple lines, handling multiline stack traces.
         """
         parsed_logs: List[LogCreate] = []
         current_log: Optional[dict] = None
-        
-        # Derive default service name from the filename (e.g. ecommerce-site from ecommerce-site.log)
-        base = os.path.basename(file_path)
-        name, _ = os.path.splitext(base)
-        default_service = name
+
+        # Fall back to deriving the service name from the filename
+        # (e.g. ecommerce-site from ecommerce-site.log) if none was supplied.
+        if not default_service:
+            base = os.path.basename(file_path)
+            name, _ = os.path.splitext(base)
+            default_service = name
 
         for raw_line in lines:
             line = raw_line.rstrip("\r\n")
@@ -81,7 +90,7 @@ class LogParser:
             parsed_line = self.parse_line(line, default_service)
             if parsed_line:
                 if current_log:
-                    parsed_logs.append(LogCreate(**current_log, file_name=file_name, file_path=file_path))
+                    parsed_logs.append(LogCreate(**current_log, file_name=file_name, file_path=file_path, instance_id=instance_id))
                 current_log = parsed_line
             else:
                 if current_log:
@@ -93,6 +102,6 @@ class LogParser:
                     logger.debug(f"Orphaned line skipped: {line}")
 
         if current_log:
-            parsed_logs.append(LogCreate(**current_log, file_name=file_name, file_path=file_path))
+            parsed_logs.append(LogCreate(**current_log, file_name=file_name, file_path=file_path, instance_id=instance_id))
 
         return parsed_logs

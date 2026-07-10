@@ -6,6 +6,7 @@ class LogFileBase(BaseModel):
     file_name: str
     file_path: str
     service_name: str
+    instance_id: Optional[str] = None
     last_processed_position: int = 0
     status: str = "new"
 
@@ -29,6 +30,7 @@ class LogFileResponse(LogFileBase):
 class LogBase(BaseModel):
     timestamp: datetime
     service_name: str
+    instance_id: Optional[str] = None
     log_level: str
     message: str
     stacktrace: Optional[str] = None
@@ -50,6 +52,7 @@ class LogStatsSummary(BaseModel):
     error_logs: int
     warning_logs: int
     services: int
+    instances: int
 
 class LogReprocessRequest(BaseModel):
     file_path: Optional[str] = None

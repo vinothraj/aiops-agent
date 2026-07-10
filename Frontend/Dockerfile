@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json /app/
 
 # Install dependencies with legacy-peer-deps to avoid conflict resolution blocks
-RUN npm ci --legacy-peer-deps
+RUN npm config set strict-ssl false && npm ci --legacy-peer-deps
 
 # Copy application source code
 COPY . /app/
