@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -27,6 +28,8 @@ def trigger_triage(request: TriageRequest, db: Session = Depends(get_db)):
 def list_incidents(
     priority: Optional[str] = None,
     status: Optional[str] = None,
+    start_date: Optional[datetime] = Query(None, description="Filter incidents created at or after this ISO datetime (UTC)."),
+    end_date: Optional[datetime] = Query(None, description="Filter incidents created at or before this ISO datetime (UTC)."),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -38,6 +41,10 @@ def list_incidents(
         query = query.where(IncidentDecision.priority == priority)
     if status:
         query = query.where(IncidentDecision.status == status)
+    if start_date:
+        query = query.where(IncidentDecision.created_at >= start_date)
+    if end_date:
+        query = query.where(IncidentDecision.created_at <= end_date)
 
     query = query.offset(skip).limit(limit)
     results = db.execute(query).scalars().all()
