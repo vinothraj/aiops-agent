@@ -20,8 +20,82 @@
       </div>
       <div>
         <h5 class="text-white m-0">Log Watcher Working Directory</h5>
-        <code class="text-info d-block mt-1 font-mono fs-6" id="monitored-directory-path">C:/Logs (Supports nested folders /Service/logs)</code>
+        <code class="text-info d-block mt-1 font-mono fs-6" id="monitored-directory-path">/var/log/monitored (read-only) — supports /Service/logs and /instanceNN/logs nesting</code>
       </div>
+    </div>
+  </div>
+
+  <!-- Monitored Root Paths -->
+  <div class="glass-panel p-4 mb-4" id="monitored-roots-card">
+    <h5 class="text-white mb-1">Monitored Root Paths</h5>
+    <p class="text-secondary small mb-3">
+      Add extra local or network (UNC) paths for the watcher to scan, e.g. <code class="text-info">\\server\share\logs</code>.
+      Paste the full path below — browsers can't expose a server-side folder browser for network shares, so this is a text field, not a native "Browse" dialog.
+      Access is strictly read-only; nothing here can modify or delete files at the source.
+    </p>
+
+    <div class="row g-2 align-items-end mb-3" id="add-root-form">
+      <div class="col-12 col-md-6">
+        <label for="new-root-path" class="form-label text-secondary fw-semibold small">Path</label>
+        <input type="text" id="new-root-path" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               placeholder="\\us1colo.biworldwide.com\webdev\tomcat\sg353\pre\logs\pre0353m1"
+               [(ngModel)]="newRootPath" (keyup.enter)="addRoot()">
+      </div>
+      <div class="col-12 col-md-4">
+        <label for="new-root-label" class="form-label text-secondary fw-semibold small">Label (optional)</label>
+        <input type="text" id="new-root-label" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               placeholder="e.g. sg353-pre" [(ngModel)]="newRootLabel" (keyup.enter)="addRoot()">
+      </div>
+      <div class="col-12 col-md-2">
+        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
+                [disabled]="addingRoot" (click)="addRoot()" id="btn-add-root">
+          <mat-icon *ngIf="!addingRoot">add</mat-icon>
+          <mat-spinner *ngIf="addingRoot" diameter="18"></mat-spinner>
+          Add
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="rootsLoading && roots.length === 0" class="d-flex justify-content-center py-3">
+      <mat-spinner diameter="30"></mat-spinner>
+    </div>
+
+    <div *ngIf="!rootsLoading && roots.length === 0" class="text-secondary small fst-italic" id="roots-empty-state">
+      No additional root paths configured yet — the default working directory above is always monitored.
+    </div>
+
+    <div *ngIf="roots.length > 0" class="table-responsive" id="roots-table-wrapper">
+      <table class="table table-dark table-hover m-0 align-middle text-secondary font-mono small" id="roots-data-table">
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Label</th>
+            <th>Status</th>
+            <th>Added</th>
+            <th class="text-end" style="width: 110px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let root of roots" [id]="'root-row-' + root.id">
+            <td class="text-white text-truncate" style="max-width: 320px;" [title]="root.path">{{ root.path }}</td>
+            <td>{{ root.label || '—' }}</td>
+            <td>
+              <span class="badge-log" [ngClass]="{
+                'badge-status-completed': root.status === 'ok',
+                'badge-status-failed': root.status === 'unreachable',
+                'badge-status-new': root.status === 'pending'
+              }">{{ root.status }}</span>
+            </td>
+            <td>{{ root.created_at | date:'yyyy-MM-dd HH:mm' }}</td>
+            <td class="text-end">
+              <button mat-stroked-button color="warn" [disabled]="removingRootIds.has(root.id)" (click)="removeRoot(root)" [id]="'btn-remove-root-' + root.id">
+                <mat-icon *ngIf="!removingRootIds.has(root.id)">delete</mat-icon>
+                <mat-spinner *ngIf="removingRootIds.has(root.id)" diameter="18"></mat-spinner>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -52,6 +126,7 @@
         <thead>
           <tr>
             <th>Service Name</th>
+            <th>Instance</th>
             <th>File Name</th>
             <th>File Path</th>
             <th class="text-end">Byte Offset</th>
@@ -63,6 +138,10 @@
         <tbody>
           <tr *ngFor="let src of sources; let idx = index" [id]="'source-row-' + src.id">
             <td class="text-white fw-semibold">{{ src.service_name }}</td>
+            <td>
+              <span *ngIf="src.instance_id; else noInstanceSrc" class="badge bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-white fw-normal">{{ src.instance_id }}</span>
+              <ng-template #noInstanceSrc><span class="text-secondary small fst-italic">—</span></ng-template>
+            </td>
             <td class="text-white">{{ src.file_name }}</td>
             <td class="small text-truncate" style="max-width: 250px;" [title]="src.file_path">{{ src.file_path }}</td>
             <td class="text-end text-info">{{ src.last_processed_position | number }} bytes</td>

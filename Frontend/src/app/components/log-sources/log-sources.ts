@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ApiService, LogFileResponse } from '../../services/api.service';
+import { FormsModule } from '@angular/forms';
+import { ApiService, LogFileResponse, MonitoredSourceRootResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -10,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule
@@ -25,10 +27,18 @@ export class LogSourcesComponent implements OnInit {
   message = '';
   messageType: 'success' | 'danger' | '' = '';
 
+  roots: MonitoredSourceRootResponse[] = [];
+  rootsLoading = false;
+  newRootPath = '';
+  newRootLabel = '';
+  addingRoot = false;
+  removingRootIds: Set<number> = new Set();
+
   constructor(private apiService: ApiService) {}
 
   ngOnInit() {
     this.loadSources();
+    this.loadRoots();
   }
 
   loadSources() {
@@ -77,6 +87,58 @@ export class LogSourcesComponent implements OnInit {
         this.reprocessingAll = false;
         this.showMessage(`Reprocessing failed: ${err.message}`, 'danger');
         this.loadSources();
+      }
+    });
+  }
+
+  loadRoots() {
+    this.rootsLoading = true;
+    this.apiService.getMonitoredRoots().subscribe({
+      next: (data) => {
+        this.roots = data;
+        this.rootsLoading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching monitored roots', err);
+        this.rootsLoading = false;
+      }
+    });
+  }
+
+  addRoot() {
+    const path = this.newRootPath.trim();
+    if (!path) {
+      this.showMessage('Enter a path before adding it.', 'danger');
+      return;
+    }
+
+    this.addingRoot = true;
+    this.apiService.addMonitoredRoot(path, this.newRootLabel.trim() || undefined).subscribe({
+      next: () => {
+        this.addingRoot = false;
+        this.newRootPath = '';
+        this.newRootLabel = '';
+        this.showMessage(`Now monitoring ${path}`, 'success');
+        this.loadRoots();
+      },
+      error: (err) => {
+        this.addingRoot = false;
+        this.showMessage(`Failed to add source: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
+  }
+
+  removeRoot(root: MonitoredSourceRootResponse) {
+    this.removingRootIds.add(root.id);
+    this.apiService.deleteMonitoredRoot(root.id).subscribe({
+      next: () => {
+        this.removingRootIds.delete(root.id);
+        this.showMessage(`Stopped monitoring ${root.path}`, 'success');
+        this.loadRoots();
+      },
+      error: (err) => {
+        this.removingRootIds.delete(root.id);
+        this.showMessage(`Failed to remove source: ${err.error?.detail || err.message}`, 'danger');
       }
     });
   }

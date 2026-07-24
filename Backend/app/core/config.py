@@ -14,7 +14,24 @@ class Settings(BaseSettings):
     # Monitored Logs Directory
     # Default is C:/Logs on Windows, but let's allow env configuration
     MONITORED_LOGS_DIR: str = "C:/Logs"
-    
+
+    # Regex matching a folder name that identifies a single deployment instance/host
+    # rather than a service (e.g. instance01, node-3, host_4, prod0353m1..m5).
+    # Override via env if your naming convention differs.
+    INSTANCE_FOLDER_PATTERN: str = r'^(instance|node|host|pod|replica)[-_]?\d+$|^prod\d+m\d+$'
+
+    # How often (seconds) to do a full re-scan of the monitored directory in addition
+    # to the real-time watchdog observer. Needed because filesystem change events
+    # aren't always delivered reliably across bind/network mounts (e.g. Docker
+    # Desktop on Windows), so a periodic catch-up scan guarantees nothing is missed.
+    LOG_SCAN_INTERVAL_SECONDS: int = 30
+
+    # A log file is only ingested if it was modified within this many hours.
+    # Kept generous by default: per-file byte-offset tracking already prevents
+    # reprocessing/duplication, so this filter only exists to skip genuinely
+    # ancient one-off archive dumps on first boot, not to gate normal ingestion.
+    LOG_FILE_MAX_AGE_HOURS: int = 720
+
     # CORS Origins (allow all or configure specific)
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
@@ -22,6 +39,10 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "models/text-embedding-004"
+
+    # Claude Configuration
+    CLAUDE_API_KEY: Optional[str] = None
+    CLAUDE_MODEL: str = "claude-sonnet-4"
 
     # Qdrant Configuration
     QDRANT_PATH: str = "qdrant_data"

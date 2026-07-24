@@ -64,6 +64,10 @@
           <div>
             <div class="text-secondary text-uppercase fw-semibold mb-1" style="font-size: 0.8rem;">Monitored Services</div>
             <h2 class="text-white m-0 display-6 fw-bold">{{ stats.services }}</h2>
+            <div class="text-secondary small mt-1" id="stat-card-instances-subtext">
+              <mat-icon style="font-size: 0.95rem; width: auto; height: auto; vertical-align: text-top;">dns</mat-icon>
+              {{ stats.instances }} instance{{ stats.instances === 1 ? '' : 's' }} reporting
+            </div>
           </div>
           <div class="p-3 rounded-3" style="background: rgba(14, 165, 233, 0.15); color: var(--color-info);">
             <mat-icon style="font-size: 2.2rem; width: auto; height: auto;">dns</mat-icon>
@@ -164,6 +168,7 @@
                 <div class="d-flex align-items-center gap-2">
                   <span class="badge-log badge-error">ERROR</span>
                   <span class="text-white fw-semibold">{{ err.service_name }}</span>
+                  <span *ngIf="err.instance_id" class="badge bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-white fw-normal small">{{ err.instance_id }}</span>
                 </div>
                 <span class="text-secondary font-mono" style="font-size: 0.8rem;">{{ err.timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</span>
               </div>

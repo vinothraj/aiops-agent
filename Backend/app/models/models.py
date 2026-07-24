@@ -9,11 +9,25 @@ class LogFile(Base):
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False, unique=True, index=True)
     service_name = Column(String(100), nullable=False)
+    instance_id = Column(String(100), nullable=True, index=True)
     last_processed_position = Column(BigInteger, default=0, nullable=False)
     last_processed_time = Column(DateTime, nullable=True)
     status = Column(String(50), default="new", nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+class MonitoredSourceRoot(Base):
+    """Additional root directories (local or UNC network paths) to monitor,
+    added on top of the env-configured settings.MONITORED_LOGS_DIR."""
+    __tablename__ = "monitored_source_roots"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    path = Column(String(1024), nullable=False, unique=True, index=True)
+    label = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(50), default="pending", nullable=False)  # pending, ok, unreachable
+    last_checked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
 
 class Log(Base):
     __tablename__ = "logs"
@@ -21,6 +35,7 @@ class Log(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     service_name = Column(String(100), nullable=False, index=True)
+    instance_id = Column(String(100), nullable=True, index=True)
     log_level = Column(String(50), nullable=False, index=True)
     message = Column(Text, nullable=False)
     stacktrace = Column(Text, nullable=True)

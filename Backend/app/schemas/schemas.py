@@ -6,6 +6,7 @@ class LogFileBase(BaseModel):
     file_name: str
     file_path: str
     service_name: str
+    instance_id: Optional[str] = None
     last_processed_position: int = 0
     status: str = "new"
 
@@ -26,9 +27,26 @@ class LogFileResponse(LogFileBase):
     class Config:
         from_attributes = True
 
+class MonitoredSourceRootCreate(BaseModel):
+    path: str
+    label: Optional[str] = None
+
+class MonitoredSourceRootResponse(BaseModel):
+    id: int
+    path: str
+    label: Optional[str] = None
+    is_active: bool
+    status: str
+    last_checked_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class LogBase(BaseModel):
     timestamp: datetime
     service_name: str
+    instance_id: Optional[str] = None
     log_level: str
     message: str
     stacktrace: Optional[str] = None
@@ -50,6 +68,7 @@ class LogStatsSummary(BaseModel):
     error_logs: int
     warning_logs: int
     services: int
+    instances: int
 
 class LogReprocessRequest(BaseModel):
     file_path: Optional[str] = None

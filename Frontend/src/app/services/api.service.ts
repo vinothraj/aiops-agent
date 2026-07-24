@@ -6,6 +6,7 @@ export interface LogResponse {
   id: number;
   timestamp: string;
   service_name: string;
+  instance_id?: string;
   log_level: string;
   message: string;
   stacktrace?: string;
@@ -19,6 +20,7 @@ export interface LogFileResponse {
   file_name: string;
   file_path: string;
   service_name: string;
+  instance_id?: string;
   last_processed_position: number;
   last_processed_time?: string;
   status: string;
@@ -26,11 +28,22 @@ export interface LogFileResponse {
   updated_at: string;
 }
 
+export interface MonitoredSourceRootResponse {
+  id: number;
+  path: string;
+  label?: string;
+  is_active: boolean;
+  status: string;
+  last_checked_at?: string;
+  created_at: string;
+}
+
 export interface LogStatsSummary {
   total_logs: number;
   error_logs: number;
   warning_logs: number;
   services: number;
+  instances: number;
 }
 
 export interface RCAStructuredResponse {
@@ -88,6 +101,7 @@ export class ApiService {
 
   getLogs(filters: {
     service_name?: string;
+    instance_id?: string;
     log_level?: string;
     start_date?: string;
     end_date?: string;
@@ -97,6 +111,7 @@ export class ApiService {
   }): Observable<LogResponse[]> {
     let params = new HttpParams();
     if (filters.service_name) params = params.set('service_name', filters.service_name);
+    if (filters.instance_id) params = params.set('instance_id', filters.instance_id);
     if (filters.log_level) params = params.set('log_level', filters.log_level);
     if (filters.start_date) params = params.set('start_date', filters.start_date);
     if (filters.end_date) params = params.set('end_date', filters.end_date);
@@ -116,6 +131,18 @@ export class ApiService {
 
   getLogSources(): Observable<LogFileResponse[]> {
     return this.http.get<LogFileResponse[]>(`${this.baseUrl}/log-sources`);
+  }
+
+  getMonitoredRoots(): Observable<MonitoredSourceRootResponse[]> {
+    return this.http.get<MonitoredSourceRootResponse[]>(`${this.baseUrl}/log-sources/roots`);
+  }
+
+  addMonitoredRoot(path: string, label?: string): Observable<MonitoredSourceRootResponse> {
+    return this.http.post<MonitoredSourceRootResponse>(`${this.baseUrl}/log-sources/roots`, { path, label });
+  }
+
+  deleteMonitoredRoot(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/log-sources/roots/${id}`);
   }
 
   reprocessLogs(fileId?: number, filePath?: string): Observable<any> {
@@ -146,10 +173,19 @@ export class ApiService {
     return this.http.post<IncidentDecisionResponse>(`${this.baseUrl}/incident/triage`, { log_id: logId });
   }
 
-  getIncidents(filters?: { priority?: string; status?: string; skip?: number; limit?: number }): Observable<IncidentDecisionResponse[]> {
+  getIncidents(filters?: {
+    priority?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    skip?: number;
+    limit?: number;
+  }): Observable<IncidentDecisionResponse[]> {
     let params = new HttpParams();
     if (filters?.priority) params = params.set('priority', filters.priority);
     if (filters?.status) params = params.set('status', filters.status);
+    if (filters?.start_date) params = params.set('start_date', filters.start_date);
+    if (filters?.end_date) params = params.set('end_date', filters.end_date);
     if (filters?.skip !== undefined) params = params.set('skip', filters.skip.toString());
     if (filters?.limit !== undefined) params = params.set('limit', filters.limit.toString());
     return this.http.get<IncidentDecisionResponse[]>(`${this.baseUrl}/incidents`, { params });

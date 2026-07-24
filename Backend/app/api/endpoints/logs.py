@@ -13,6 +13,7 @@ router = APIRouter()
 @router.get("", response_model=List[LogResponse])
 def get_logs(
     service_name: Optional[str] = None,
+    instance_id: Optional[str] = None,
     log_level: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
@@ -29,6 +30,7 @@ def get_logs(
         skip=skip,
         limit=limit,
         service_name=service_name,
+        instance_id=instance_id,
         log_level=log_level,
         start_date=start_date,
         end_date=end_date,
