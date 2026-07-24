@@ -28,6 +28,16 @@ export interface LogFileResponse {
   updated_at: string;
 }
 
+export interface MonitoredSourceRootResponse {
+  id: number;
+  path: string;
+  label?: string;
+  is_active: boolean;
+  status: string;
+  last_checked_at?: string;
+  created_at: string;
+}
+
 export interface LogStatsSummary {
   total_logs: number;
   error_logs: number;
@@ -121,6 +131,18 @@ export class ApiService {
 
   getLogSources(): Observable<LogFileResponse[]> {
     return this.http.get<LogFileResponse[]>(`${this.baseUrl}/log-sources`);
+  }
+
+  getMonitoredRoots(): Observable<MonitoredSourceRootResponse[]> {
+    return this.http.get<MonitoredSourceRootResponse[]>(`${this.baseUrl}/log-sources/roots`);
+  }
+
+  addMonitoredRoot(path: string, label?: string): Observable<MonitoredSourceRootResponse> {
+    return this.http.post<MonitoredSourceRootResponse>(`${this.baseUrl}/log-sources/roots`, { path, label });
+  }
+
+  deleteMonitoredRoot(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/log-sources/roots/${id}`);
   }
 
   reprocessLogs(fileId?: number, filePath?: string): Observable<any> {

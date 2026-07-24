@@ -16,6 +16,19 @@ class LogFile(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
+class MonitoredSourceRoot(Base):
+    """Additional root directories (local or UNC network paths) to monitor,
+    added on top of the env-configured settings.MONITORED_LOGS_DIR."""
+    __tablename__ = "monitored_source_roots"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    path = Column(String(1024), nullable=False, unique=True, index=True)
+    label = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(50), default="pending", nullable=False)  # pending, ok, unreachable
+    last_checked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
 class Log(Base):
     __tablename__ = "logs"
 

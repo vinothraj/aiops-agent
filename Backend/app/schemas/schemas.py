@@ -27,6 +27,22 @@ class LogFileResponse(LogFileBase):
     class Config:
         from_attributes = True
 
+class MonitoredSourceRootCreate(BaseModel):
+    path: str
+    label: Optional[str] = None
+
+class MonitoredSourceRootResponse(BaseModel):
+    id: int
+    path: str
+    label: Optional[str] = None
+    is_active: bool
+    status: str
+    last_checked_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class LogBase(BaseModel):
     timestamp: datetime
     service_name: str

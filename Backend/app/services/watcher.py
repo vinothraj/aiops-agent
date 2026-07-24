@@ -4,14 +4,14 @@ import logging
 import re
 from datetime import datetime, timedelta
 from threading import Thread
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from app.core.config import settings
 from app.database.session import SessionLocal
-from app.repositories.repositories import log_file_repo, log_repo
+from app.repositories.repositories import log_file_repo, log_repo, monitored_source_root_repo
 from app.schemas.schemas import LogFileCreate, LogFileUpdate
 from app.services.parser import LogParser
 
@@ -23,9 +23,63 @@ parser = LogParser()
 # Configurable via settings.INSTANCE_FOLDER_PATTERN for environments with different naming.
 INSTANCE_FOLDER_PATTERN = re.compile(settings.INSTANCE_FOLDER_PATTERN, re.IGNORECASE)
 
-def parse_source_identity(file_path: str, monitored_dir: str) -> tuple[str, Optional[str]]:
+def get_active_root_paths(db) -> List[str]:
     """
-    Determines (service_name, instance_id) based on directory structure.
+    Returns every directory the watcher should monitor: the legacy
+    env-configured settings.MONITORED_LOGS_DIR plus any additional roots
+    (e.g. UNC network paths) added via the Log Sources UI, deduplicated.
+    """
+    roots = [settings.MONITORED_LOGS_DIR]
+    roots.extend(r.path for r in monitored_source_root_repo.get_all_active(db))
+
+    seen = set()
+    deduped = []
+    for root in roots:
+        key = os.path.normcase(os.path.normpath(root))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(root)
+    return deduped
+
+def validate_root_path(path: str) -> tuple[bool, str]:
+    """
+    Validates a candidate monitored root path (local or UNC network path).
+    Read-only check only — never creates, modifies, or removes anything.
+    """
+    if not path or not path.strip():
+        return False, "Path cannot be empty"
+    if not os.path.exists(path):
+        return False, "Path does not exist or is unreachable (check network share connectivity/permissions)"
+    if not os.path.isdir(path):
+        return False, "Path is not a directory"
+    if not os.access(path, os.R_OK):
+        return False, "Path is not readable (permission denied)"
+    return True, "ok"
+
+def _find_matching_root(file_path: str, monitored_roots: List[str]) -> str:
+    """
+    Picks the most specific (longest) monitored root that contains file_path.
+    Falls back to the first configured root if none match (e.g. file passed
+    directly rather than discovered via a scan).
+    """
+    norm_path = os.path.normpath(file_path)
+    best_root = None
+    for root in monitored_roots:
+        norm_root = os.path.normpath(root)
+        try:
+            rel = os.path.relpath(norm_path, norm_root)
+        except ValueError:
+            # Paths on different drives/UNC hosts — can't be relative to each other
+            continue
+        if rel == os.curdir or not rel.startswith(os.pardir):
+            if best_root is None or len(norm_root) > len(os.path.normpath(best_root)):
+                best_root = root
+    return best_root if best_root is not None else (monitored_roots[0] if monitored_roots else "")
+
+def parse_source_identity(file_path: str, monitored_roots) -> tuple[str, Optional[str]]:
+    """
+    Determines (service_name, instance_id) based on directory structure,
+    relative to whichever monitored root actually contains this file.
 
     Examples (relative to the monitored root):
       instance01/ecommerce-site.log        -> service="ecommerce-site", instance="instance01"
@@ -33,8 +87,11 @@ def parse_source_identity(file_path: str, monitored_dir: str) -> tuple[str, Opti
       ProductService/application.log       -> service="ProductService", instance=None
       application.log                      -> service="application",   instance=None
     """
+    if isinstance(monitored_roots, str):
+        monitored_roots = [monitored_roots]
+
     norm_path = os.path.normpath(file_path)
-    norm_monitored = os.path.normpath(monitored_dir)
+    norm_monitored = os.path.normpath(_find_matching_root(file_path, monitored_roots))
 
     rel_path = os.path.relpath(norm_path, norm_monitored)
     parts = rel_path.split(os.sep)
@@ -126,7 +183,7 @@ class LogFileProcessor:
         db = SessionLocal()
         try:
             file_name = os.path.basename(file_path)
-            service_name, instance_id = parse_source_identity(file_path, settings.MONITORED_LOGS_DIR)
+            service_name, instance_id = parse_source_identity(file_path, get_active_root_paths(db))
 
             # 1. Fetch or create log file record
             db_log_file = log_file_repo.get_by_path(db, file_path)
@@ -230,34 +287,79 @@ class LogWatcherService:
         self.observer: Optional[Observer] = None
         self.thread: Optional[Thread] = None
         self.running = False
+        self._handler: Optional[LogWatcherHandler] = None
+        self._watches: Dict[str, Any] = {}  # normalized root path -> ObservedWatch
 
-    def scan_directory(self) -> None:
-        """
-        Recursively scans the monitored directory to catch up on files.
-        """
-        logger.info(f"Scanning monitored directory: {settings.MONITORED_LOGS_DIR}")
-        if not os.path.exists(settings.MONITORED_LOGS_DIR):
-            logger.warning(f"Directory {settings.MONITORED_LOGS_DIR} does not exist. Creating it.")
-            os.makedirs(settings.MONITORED_LOGS_DIR, exist_ok=True)
+    def _get_active_roots(self) -> List[str]:
+        db = SessionLocal()
+        try:
+            return get_active_root_paths(db)
+        finally:
+            db.close()
+
+    def _scan_root(self, root: str) -> None:
+        logger.info(f"Scanning monitored directory: {root}")
+        if not os.path.exists(root):
+            # Default legacy dir gets auto-created; additional (e.g. UNC) roots are
+            # left alone — they're expected to already exist on their own host/share,
+            # and the periodic re-scan will pick them up once reachable.
+            if os.path.normcase(os.path.normpath(root)) == os.path.normcase(os.path.normpath(settings.MONITORED_LOGS_DIR)):
+                logger.warning(f"Directory {root} does not exist. Creating it.")
+                os.makedirs(root, exist_ok=True)
+            else:
+                logger.warning(f"Monitored root {root} is not currently reachable. Will retry on next scan cycle.")
             return
 
-        for root, _, files in os.walk(settings.MONITORED_LOGS_DIR):
-            for file in files:
-                file_path = os.path.join(root, file)
-                LogFileProcessor.process_file(file_path)
+        try:
+            for dirpath, _, files in os.walk(root):
+                for file in files:
+                    file_path = os.path.join(dirpath, file)
+                    LogFileProcessor.process_file(file_path)
+        except Exception as e:
+            logger.error(f"Error scanning monitored root {root}: {str(e)}")
+
+    def scan_all_roots(self) -> None:
+        """
+        Recursively scans every active monitored root (legacy dir + any
+        additional roots added via the Log Sources UI) to catch up on files.
+        """
+        for root in self._get_active_roots():
+            self._scan_root(root)
+
+    def scan_directory(self) -> None:
+        """Kept for backward compatibility with existing call sites (e.g. main.py)."""
+        self.scan_all_roots()
+
+    def _schedule_watch(self, root: str) -> None:
+        if self.observer is None or self._handler is None:
+            return
+        norm = os.path.normcase(os.path.normpath(root))
+        if norm in self._watches:
+            return
+        if not os.path.isdir(root):
+            logger.warning(f"Cannot schedule watchdog observer on {root}: not reachable yet. Periodic scan will retry.")
+            return
+        try:
+            watch = self.observer.schedule(self._handler, root, recursive=True)
+            self._watches[norm] = watch
+            logger.info(f"Watchdog Observer scheduled on: {root}")
+        except Exception as e:
+            logger.error(f"Failed to schedule watchdog observer on {root}: {str(e)}")
 
     def _run_observer(self) -> None:
-        event_handler = LogWatcherHandler()
+        self._handler = LogWatcherHandler()
         self.observer = Observer()
-        self.observer.schedule(event_handler, settings.MONITORED_LOGS_DIR, recursive=True)
+        for root in self._get_active_roots():
+            self._schedule_watch(root)
         self.observer.start()
-        logger.info(f"Watchdog Observer started on: {settings.MONITORED_LOGS_DIR}")
 
         # Periodic full re-scan safety net: filesystem change events aren't always
         # delivered reliably across bind/network mounts, so this guarantees files
         # are eventually caught even if an individual on_modified/on_created event
         # was dropped. Byte-offset tracking makes repeated scans of unchanged
-        # files a no-op, so this is safe to run indefinitely.
+        # files a no-op, so this is safe to run indefinitely. It also retries
+        # scheduling watches on roots (e.g. network shares) that were unreachable
+        # at startup or briefly dropped.
         scan_interval = max(settings.LOG_SCAN_INTERVAL_SECONDS, 1)
         elapsed = 0
         try:
@@ -267,7 +369,9 @@ class LogWatcherService:
                 if elapsed >= scan_interval:
                     elapsed = 0
                     try:
-                        self.scan_directory()
+                        self.scan_all_roots()
+                        for root in self._get_active_roots():
+                            self._schedule_watch(root)
                     except Exception as e:
                         logger.error(f"Error during periodic log directory scan: {str(e)}")
         except Exception as e:
@@ -280,9 +384,9 @@ class LogWatcherService:
     def start(self) -> None:
         if self.running:
             return
-        
+
         # 1. Catch up on historical modifications
-        self.scan_directory()
+        self.scan_all_roots()
 
         # 2. Start watchdog observer in background thread
         self.running = True
@@ -294,6 +398,33 @@ class LogWatcherService:
         if self.thread:
             self.thread.join(timeout=5)
             self.thread = None
+
+    def add_root(self, path: str) -> None:
+        """
+        Hot-adds a newly registered monitored root: runs an immediate catch-up
+        scan and, if the observer is running, schedules a live watch on it.
+        """
+        try:
+            self._scan_root(path)
+        except Exception as e:
+            logger.error(f"Error during initial scan of new root {path}: {str(e)}")
+
+        if self.running and self.observer is not None:
+            self._schedule_watch(path)
+
+    def remove_root(self, path: str) -> None:
+        """
+        Stops watching a root removed via the API. Never touches previously
+        ingested LogFile/Log rows or the source filesystem itself.
+        """
+        norm = os.path.normcase(os.path.normpath(path))
+        watch = self._watches.pop(norm, None)
+        if watch is not None and self.observer is not None:
+            try:
+                self.observer.unschedule(watch)
+                logger.info(f"Watchdog Observer unscheduled from: {path}")
+            except Exception as e:
+                logger.error(f"Error unscheduling watch on {path}: {str(e)}")
 
 # Global service instance
 log_watcher_service = LogWatcherService()

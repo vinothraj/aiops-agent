@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_, delete
-from app.models.models import LogFile, Log
-from app.schemas.schemas import LogFileCreate, LogFileUpdate, LogCreate
+import os
+from app.models.models import LogFile, Log, MonitoredSourceRoot
+from app.schemas.schemas import LogFileCreate, LogFileUpdate, LogCreate, MonitoredSourceRootCreate
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -133,5 +134,47 @@ class LogRepository:
             "instances": instances
         }
 
+class MonitoredSourceRootRepository:
+    def get(self, db: Session, root_id: int) -> Optional[MonitoredSourceRoot]:
+        return db.scalar(select(MonitoredSourceRoot).where(MonitoredSourceRoot.id == root_id))
+
+    def get_by_path(self, db: Session, path: str) -> Optional[MonitoredSourceRoot]:
+        norm_path = os.path.normcase(os.path.normpath(path))
+        for root in db.scalars(select(MonitoredSourceRoot)).all():
+            if os.path.normcase(os.path.normpath(root.path)) == norm_path:
+                return root
+        return None
+
+    def get_all(self, db: Session) -> List[MonitoredSourceRoot]:
+        return list(db.scalars(select(MonitoredSourceRoot).order_by(MonitoredSourceRoot.created_at.desc())).all())
+
+    def get_all_active(self, db: Session) -> List[MonitoredSourceRoot]:
+        return list(db.scalars(select(MonitoredSourceRoot).where(MonitoredSourceRoot.is_active == True)).all())
+
+    def create(self, db: Session, obj_in: MonitoredSourceRootCreate) -> MonitoredSourceRoot:
+        db_obj = MonitoredSourceRoot(
+            path=obj_in.path,
+            label=obj_in.label,
+            is_active=True,
+            status="pending"
+        )
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def update_status(self, db: Session, db_obj: MonitoredSourceRoot, status: str) -> MonitoredSourceRoot:
+        db_obj.status = status
+        db_obj.last_checked_at = datetime.utcnow()
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def delete(self, db: Session, db_obj: MonitoredSourceRoot) -> None:
+        db.delete(db_obj)
+        db.commit()
+
 log_file_repo = LogFileRepository()
 log_repo = LogRepository()
+monitored_source_root_repo = MonitoredSourceRootRepository()
