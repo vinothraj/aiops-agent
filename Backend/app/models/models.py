@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import Column, Integer, String, Text, DateTime, BigInteger, Float, ForeignKey, func, Boolean
 from sqlalchemy.orm import relationship
 from app.database.session import Base
@@ -42,6 +43,19 @@ class Log(Base):
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    @property
+    def has_rca(self) -> bool:
+        """Whether an AI root-cause analysis has already been generated for this log."""
+        return bool(self.analyses)
+
+    @property
+    def rca_severity(self) -> Optional[str]:
+        return self.analyses[0].severity if self.analyses else None
+
+    @property
+    def rca_root_cause_category(self) -> Optional[str]:
+        return self.analyses[0].root_cause_category if self.analyses else None
 
 class LogAnalysis(Base):
     __tablename__ = "log_analyses"

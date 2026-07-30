@@ -1,7 +1,7 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import select, func, or_, delete
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select, func, or_, delete, case
 import os
-from app.models.models import LogFile, Log, MonitoredSourceRoot
+from app.models.models import LogFile, Log, MonitoredSourceRoot, LogAnalysis
 from app.schemas.schemas import LogFileCreate, LogFileUpdate, LogCreate, MonitoredSourceRootCreate
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -44,21 +44,17 @@ class LogRepository:
     def get(self, db: Session, log_id: int) -> Optional[Log]:
         return db.scalar(select(Log).where(Log.id == log_id))
 
-    def get_all(
-        self,
-        db: Session,
+    @staticmethod
+    def _apply_filters(
+        query,
         *,
-        skip: int = 0,
-        limit: int = 100,
         service_name: Optional[str] = None,
         instance_id: Optional[str] = None,
         log_level: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         search_query: Optional[str] = None
-    ) -> List[Log]:
-        query = select(Log)
-
+    ):
         if service_name:
             query = query.where(Log.service_name == service_name)
         if instance_id:
@@ -76,9 +72,66 @@ class LogRepository:
                     Log.stacktrace.ilike(f"%{search_query}%")
                 )
             )
+        return query
 
-        query = query.order_by(Log.timestamp.desc()).offset(skip).limit(limit)
+    def get_all(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        **filters
+    ) -> List[Log]:
+        query = self._apply_filters(select(Log), **filters)
+        query = query.options(selectinload(Log.analyses)).order_by(Log.timestamp.desc()).offset(skip).limit(limit)
         return list(db.scalars(query).all())
+
+    def count_matching(self, db: Session, **filters) -> int:
+        query = self._apply_filters(select(func.count(Log.id)), **filters)
+        return db.scalar(query) or 0
+
+    def get_for_export(self, db: Session, *, limit: int = 10000, **filters) -> List[Log]:
+        query = self._apply_filters(select(Log), **filters)
+        query = query.options(selectinload(Log.analyses)).order_by(Log.timestamp.desc()).limit(limit)
+        return list(db.scalars(query).all())
+
+    def count_errors_with_rca(self, db: Session, **filters) -> int:
+        """Count of matching ERROR-level logs that already have an RCA solution, regardless of any log_level filter passed in."""
+        error_filters = {**filters, "log_level": "ERROR"}
+        query = self._apply_filters(
+            select(func.count(func.distinct(Log.id))).select_from(Log).join(LogAnalysis, LogAnalysis.log_id == Log.id),
+            **error_filters
+        )
+        return db.scalar(query) or 0
+
+    def get_level_counts(self, db: Session, **filters) -> Dict[str, int]:
+        query = self._apply_filters(
+            select(Log.log_level, func.count(Log.id)), **filters
+        ).group_by(Log.log_level)
+        return {level: count for level, count in db.execute(query).all()}
+
+    def get_top_services(self, db: Session, *, limit: int = 8, **filters) -> List[Dict[str, Any]]:
+        error_count = func.sum(case((Log.log_level == "ERROR", 1), else_=0))
+        query = self._apply_filters(
+            select(Log.service_name, func.count(Log.id).label("count"), error_count.label("error_count")),
+            **filters
+        ).group_by(Log.service_name).order_by(func.count(Log.id).desc()).limit(limit)
+        return [
+            {"service_name": row[0], "count": row[1], "error_count": int(row[2] or 0)}
+            for row in db.execute(query).all()
+        ]
+
+    def get_time_series(self, db: Session, *, bucket_expr, **filters) -> List[Dict[str, Any]]:
+        error_count = func.sum(case((Log.log_level == "ERROR", 1), else_=0))
+        bucket = bucket_expr.label("bucket")
+        query = self._apply_filters(
+            select(bucket, func.count(Log.id).label("count"), error_count.label("error_count")),
+            **filters
+        ).group_by(bucket).order_by(bucket)
+        return [
+            {"bucket": row[0], "count": row[1], "error_count": int(row[2] or 0)}
+            for row in db.execute(query).all()
+        ]
 
     def create(self, db: Session, obj_in: LogCreate) -> Log:
         db_obj = Log(

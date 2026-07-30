@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface LogResponse {
@@ -13,6 +13,9 @@ export interface LogResponse {
   file_name: string;
   file_path: string;
   created_at: string;
+  has_rca: boolean;
+  rca_severity?: string;
+  rca_root_cause_category?: string;
 }
 
 export interface LogFileResponse {
@@ -44,6 +47,37 @@ export interface LogStatsSummary {
   warning_logs: number;
   services: number;
   instances: number;
+}
+
+export interface LogServiceBreakdown {
+  service_name: string;
+  count: number;
+  error_count: number;
+}
+
+export interface LogTimeSeriesPoint {
+  bucket: string;
+  count: number;
+  error_count: number;
+}
+
+export interface LogSummaryResponse {
+  total_matched: number;
+  level_counts: { [level: string]: number };
+  top_services: LogServiceBreakdown[];
+  time_series: LogTimeSeriesPoint[];
+  bucket_granularity: 'hour' | 'day';
+  errors_total: number;
+  errors_with_rca: number;
+}
+
+export interface LogQueryFilters {
+  service_name?: string;
+  instance_id?: string;
+  log_level?: string;
+  start_date?: string;
+  end_date?: string;
+  search_query?: string;
 }
 
 export interface RCAStructuredResponse {
@@ -118,16 +152,7 @@ export class ApiService {
     return this.http.get<LogStatsSummary>(`${this.baseUrl}/stats/summary`);
   }
 
-  getLogs(filters: {
-    service_name?: string;
-    instance_id?: string;
-    log_level?: string;
-    start_date?: string;
-    end_date?: string;
-    search_query?: string;
-    skip?: number;
-    limit?: number;
-  }): Observable<LogResponse[]> {
+  private buildLogFilterParams(filters: LogQueryFilters): HttpParams {
     let params = new HttpParams();
     if (filters.service_name) params = params.set('service_name', filters.service_name);
     if (filters.instance_id) params = params.set('instance_id', filters.instance_id);
@@ -135,10 +160,25 @@ export class ApiService {
     if (filters.start_date) params = params.set('start_date', filters.start_date);
     if (filters.end_date) params = params.set('end_date', filters.end_date);
     if (filters.search_query) params = params.set('search_query', filters.search_query);
+    return params;
+  }
+
+  getLogs(filters: LogQueryFilters & { skip?: number; limit?: number }): Observable<LogResponse[]> {
+    let params = this.buildLogFilterParams(filters);
     if (filters.skip !== undefined) params = params.set('skip', filters.skip.toString());
     if (filters.limit !== undefined) params = params.set('limit', filters.limit.toString());
 
     return this.http.get<LogResponse[]>(`${this.baseUrl}/logs`, { params });
+  }
+
+  getLogsSummary(filters: LogQueryFilters): Observable<LogSummaryResponse> {
+    const params = this.buildLogFilterParams(filters);
+    return this.http.get<LogSummaryResponse>(`${this.baseUrl}/logs/summary`, { params });
+  }
+
+  exportLogs(filters: LogQueryFilters): Observable<HttpResponse<Blob>> {
+    const params = this.buildLogFilterParams(filters);
+    return this.http.get(`${this.baseUrl}/logs/export`, { params, responseType: 'blob', observe: 'response' });
   }
 
   searchLogs(q: string, skip = 0, limit = 100): Observable<LogResponse[]> {
@@ -282,6 +322,16 @@ export class ApiService {
 
   getIncidentTimeline(incidentId: number): Observable<TimelineEventResponse[]> {
     return this.http.get<TimelineEventResponse[]>(`${this.baseUrl}/notifications/timeline/${incidentId}`);
+  }
+
+  // ─── Settings ───────────────────────────────────────────────────────────
+
+  getDatabaseStats(): Observable<{ [table: string]: number }> {
+    return this.http.get<{ [table: string]: number }>(`${this.baseUrl}/settings/database/stats`);
+  }
+
+  resetDatabase(confirm: string): Observable<{ message: string; tables_cleared: string[] }> {
+    return this.http.post<{ message: string; tables_cleared: string[] }>(`${this.baseUrl}/settings/database/reset`, { confirm });
   }
 }
 

@@ -1,0 +1,16 @@
+.reset-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 13, 22, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.reset-modal-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 1rem;
+}

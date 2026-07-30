@@ -60,12 +60,109 @@
 
     <!-- Action Buttons -->
     <div class="d-flex justify-content-end gap-2 mt-3" id="filter-actions">
+      <button mat-stroked-button color="primary" (click)="setTodayFilter()" id="btn-filter-today">
+        <mat-icon>today</mat-icon> Today
+      </button>
       <button mat-stroked-button color="accent" (click)="resetFilters()" id="btn-reset-filters">
         Reset Filters
       </button>
       <button mat-flat-button color="primary" style="background: var(--accent-gradient);" (click)="applyFilters()" id="btn-apply-filters">
         <mat-icon>search</mat-icon> Query Logs
       </button>
+      <button mat-stroked-button color="primary" class="d-flex align-items-center gap-2" [disabled]="exporting" (click)="downloadExport()" id="btn-download-export">
+        <mat-icon *ngIf="!exporting">download</mat-icon>
+        <mat-spinner *ngIf="exporting" diameter="18"></mat-spinner>
+        Download Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="{
+    'alert-success bg-success bg-opacity-20 text-success border-success border-opacity-30': messageType === 'success',
+    'alert-danger bg-danger bg-opacity-20 text-danger border-danger border-opacity-30': messageType === 'danger'
+  }" role="alert" id="log-viewer-message-banner">
+    <div class="d-flex align-items-center gap-2">
+      <mat-icon>{{ messageType === 'success' ? 'check_circle' : 'error' }}</mat-icon>
+      <span>{{ message }}</span>
+    </div>
+  </div>
+
+  <!-- Summary / Chart Panel -->
+  <div class="glass-panel p-4 mb-4" id="log-summary-panel">
+    <div *ngIf="summaryLoading && !summary" class="d-flex justify-content-center align-items-center py-4">
+      <mat-spinner diameter="30"></mat-spinner>
+    </div>
+
+    <div *ngIf="summary" class="row g-4">
+      <div class="col-12 d-flex align-items-center justify-content-between">
+        <h5 class="text-white m-0">Filtered Results Overview</h5>
+        <span class="text-secondary small">{{ summary.total_matched | number }} matching log{{ summary.total_matched === 1 ? '' : 's' }}</span>
+      </div>
+
+      <!-- Time series chart -->
+      <div class="col-12 col-lg-6">
+        <div class="text-secondary text-uppercase fw-semibold small mb-2">Volume Over Time ({{ summary.bucket_granularity === 'hour' ? 'hourly' : 'daily' }})</div>
+        <div *ngIf="timeSeriesBars.length === 0" class="text-secondary small fst-italic py-4 text-center">No data in range.</div>
+        <div *ngIf="timeSeriesBars.length > 0" class="d-flex align-items-end gap-1" style="height: 140px;" id="time-series-chart">
+          <div *ngFor="let bar of timeSeriesBars" class="d-flex flex-column align-items-center justify-content-end flex-fill h-100" [title]="bar.label + ': ' + bar.count + ' logs'">
+            <div class="w-100 position-relative d-flex flex-column justify-content-end" style="height: 100%; min-width: 3px;">
+              <div class="w-100 rounded-top" style="background-color: var(--color-info); opacity: 0.55;" [style.height.%]="bar.totalHeightPct"></div>
+              <div class="w-100 position-absolute bottom-0" style="background-color: var(--color-error);" [style.height.%]="bar.errorHeightPct"></div>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="timeSeriesBars.length > 0" class="d-flex justify-content-between text-secondary mt-1" style="font-size: 0.7rem;">
+          <span>{{ timeSeriesBars[0].label }}</span>
+          <span>{{ timeSeriesBars[timeSeriesBars.length - 1].label }}</span>
+        </div>
+      </div>
+
+      <!-- Severity breakdown -->
+      <div class="col-12 col-lg-3">
+        <div class="text-secondary text-uppercase fw-semibold small mb-2">By Severity</div>
+        <div *ngIf="levelBars.length === 0" class="text-secondary small fst-italic py-4 text-center">No data.</div>
+        <div *ngFor="let lvl of levelBars" class="mb-2" [id]="'level-bar-' + lvl.level">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-white">{{ lvl.level }}</span>
+            <span class="text-secondary">{{ lvl.count | number }}</span>
+          </div>
+          <div class="rounded-pill" style="height: 6px; background-color: rgba(255,255,255,0.08);">
+            <div class="rounded-pill" [style.width.%]="lvl.pct" [style.background-color]="lvl.color" style="height: 6px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top services breakdown -->
+      <div class="col-12 col-lg-3">
+        <div class="text-secondary text-uppercase fw-semibold small mb-2">Top Services</div>
+        <div *ngIf="serviceBars.length === 0" class="text-secondary small fst-italic py-4 text-center">No data.</div>
+        <div *ngFor="let svc of serviceBars" class="mb-2" [id]="'service-bar-' + svc.service_name">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-white text-truncate" style="max-width: 140px;" [title]="svc.service_name">{{ svc.service_name }}</span>
+            <span class="text-secondary">{{ svc.count | number }}<span *ngIf="svc.error_count > 0" class="text-danger"> ({{ svc.error_count }} err)</span></span>
+          </div>
+          <div class="rounded-pill" style="height: 6px; background-color: rgba(255,255,255,0.08);">
+            <div class="rounded-pill" [style.width.%]="svc.pct" style="height: 6px; background-color: var(--color-info);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RCA solution coverage -->
+      <div class="col-12" id="rca-coverage-panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="text-secondary text-uppercase fw-semibold small">
+            <mat-icon style="font-size: 1rem; width: auto; height: auto; vertical-align: text-top;">psychology</mat-icon>
+            Error RCA Solution Coverage
+          </div>
+          <span class="text-white small fw-semibold" id="rca-coverage-text">
+            {{ summary.errors_with_rca | number }} of {{ summary.errors_total | number }} errors solved ({{ rcaCoveragePct | number:'1.0-0' }}%)
+          </span>
+        </div>
+        <div class="rounded-pill" style="height: 10px; background-color: var(--color-error); opacity: 0.35;">
+          <div class="rounded-pill" [style.width.%]="rcaCoveragePct" style="height: 10px; background-color: var(--color-debug);"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -99,13 +196,17 @@
             <tr class="log-summary-row" (click)="toggleExpand(log.id)" style="cursor: pointer;" [id]="'log-row-' + log.id">
               <td class="text-white small">{{ log.timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</td>
               <td>
-                <span class="badge-log" [ngClass]="{
-                  'badge-error': log.log_level === 'ERROR',
-                  'badge-warning': log.log_level === 'WARNING',
-                  'badge-info': log.log_level === 'INFO',
-                  'badge-debug': log.log_level === 'DEBUG',
-                  'badge-default': log.log_level !== 'ERROR' && log.log_level !== 'WARNING' && log.log_level !== 'INFO' && log.log_level !== 'DEBUG'
-                }">{{ log.log_level }}</span>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge-log" [ngClass]="{
+                    'badge-error': log.log_level === 'ERROR',
+                    'badge-warning': log.log_level === 'WARNING',
+                    'badge-info': log.log_level === 'INFO',
+                    'badge-debug': log.log_level === 'DEBUG',
+                    'badge-default': log.log_level !== 'ERROR' && log.log_level !== 'WARNING' && log.log_level !== 'INFO' && log.log_level !== 'DEBUG'
+                  }">{{ log.log_level }}</span>
+                  <mat-icon *ngIf="log.log_level === 'ERROR' && log.has_rca" class="text-success" style="font-size: 1.1rem; width: auto; height: auto;" title="RCA solution found">task_alt</mat-icon>
+                  <mat-icon *ngIf="log.log_level === 'ERROR' && !log.has_rca" class="text-danger" style="font-size: 1.1rem; width: auto; height: auto;" title="No RCA solution yet">report_problem</mat-icon>
+                </div>
               </td>
               <td class="text-white fw-semibold">{{ log.service_name }}</td>
               <td>

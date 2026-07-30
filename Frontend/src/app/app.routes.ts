@@ -7,6 +7,7 @@ import { IncidentQueueComponent } from './components/incident-queue/incident-que
 import { IncidentGroupsComponent } from './components/incident-groups/incident-groups';
 import { GitlabDashboardComponent } from './components/gitlab-dashboard/gitlab-dashboard';
 import { NotificationsComponent } from './components/notifications/notifications';
+import { SettingsComponent } from './components/settings/settings';
 
 export const routes: Routes = [
   { path: 'dashboard', component: DashboardComponent },
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'incident-groups', component: IncidentGroupsComponent },
   { path: 'gitlab-issues', component: GitlabDashboardComponent },
   { path: 'notifications', component: NotificationsComponent },
+  { path: 'settings', component: SettingsComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: '**', redirectTo: 'dashboard' }
 ];

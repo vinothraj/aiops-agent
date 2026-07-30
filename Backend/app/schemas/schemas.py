@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 class LogFileBase(BaseModel):
     file_name: str
@@ -59,6 +59,9 @@ class LogCreate(LogBase):
 class LogResponse(LogBase):
     id: int
     created_at: datetime
+    has_rca: bool = False
+    rca_severity: Optional[str] = None
+    rca_root_cause_category: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -73,6 +76,26 @@ class LogStatsSummary(BaseModel):
 class LogReprocessRequest(BaseModel):
     file_path: Optional[str] = None
     file_id: Optional[int] = None
+
+class LogServiceBreakdown(BaseModel):
+    service_name: str
+    count: int
+    error_count: int
+
+class LogTimeSeriesPoint(BaseModel):
+    bucket: datetime
+    count: int
+    error_count: int
+
+class LogSummaryResponse(BaseModel):
+    """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""
+    total_matched: int
+    level_counts: Dict[str, int]
+    top_services: List[LogServiceBreakdown]
+    time_series: List[LogTimeSeriesPoint]
+    bucket_granularity: str
+    errors_total: int
+    errors_with_rca: int
 
 # ─── RCA Agent Schemas ────────────────────────────────────────────────────────
 

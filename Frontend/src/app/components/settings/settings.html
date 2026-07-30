@@ -1,0 +1,95 @@
+<div class="container-fluid py-4" id="settings-container">
+  <!-- Header -->
+  <div class="mb-4">
+    <h1 class="text-white m-0" id="settings-title">Settings</h1>
+    <p class="text-secondary m-0" id="settings-subtitle">Platform configuration and data management.</p>
+  </div>
+
+  <!-- Notification Banner -->
+  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="{
+    'alert-success bg-success bg-opacity-20 text-success border-success border-opacity-30': messageType === 'success',
+    'alert-danger bg-danger bg-opacity-20 text-danger border-danger border-opacity-30': messageType === 'danger'
+  }" role="alert" id="settings-message-banner">
+    <div class="d-flex align-items-center gap-2">
+      <mat-icon>{{ messageType === 'success' ? 'check_circle' : 'error' }}</mat-icon>
+      <span>{{ message }}</span>
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="glass-panel p-4 border border-danger border-opacity-25" id="danger-zone-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <mat-icon class="text-danger">warning</mat-icon>
+      <h5 class="text-white m-0">Danger Zone</h5>
+    </div>
+    <p class="text-secondary small mb-3">
+      Permanently clear all ingested data — logs, RCA analyses, incidents, incident groups, GitLab issue links,
+      and notifications. The database schema and configured log sources are left intact. This action cannot be undone.
+    </p>
+
+    <div *ngIf="statsLoading" class="d-flex align-items-center gap-2 text-secondary small mb-3">
+      <mat-spinner diameter="18"></mat-spinner>
+      Loading current data volume...
+    </div>
+
+    <div *ngIf="!statsLoading" class="mb-3" id="database-stats-summary">
+      <span class="text-white fw-semibold">{{ totalRows | number }}</span>
+      <span class="text-secondary"> total rows across {{ statEntries.length }} tables</span>
+      <div class="d-flex flex-wrap gap-2 mt-2" id="database-stats-badges">
+        <span *ngFor="let entry of statEntries" class="badge bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-white fw-normal font-mono">
+          {{ entry.table }}: {{ entry.count | number }}
+        </span>
+      </div>
+    </div>
+
+    <button mat-flat-button color="warn" class="d-flex align-items-center gap-2" (click)="startReset()" id="btn-open-reset-dialog">
+      <mat-icon>delete_forever</mat-icon>
+      Reset Database
+    </button>
+  </div>
+
+  <!-- Step 1: Are-you-sure overlay -->
+  <div *ngIf="confirmStep === 1" class="reset-modal-backdrop" id="reset-confirm-step1-backdrop">
+    <div class="glass-panel p-4 reset-modal-card border border-danger border-opacity-25" id="reset-confirm-step1-card">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <mat-icon class="text-danger">warning</mat-icon>
+        <h5 class="text-white m-0">Reset the entire database?</h5>
+      </div>
+      <p class="text-secondary small">
+        This will permanently delete <strong class="text-white">all {{ totalRows | number }} rows</strong>
+        of ingested logs, RCA analyses, incidents, incident groups, and notifications. This cannot be undone.
+      </p>
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button mat-stroked-button color="primary" (click)="cancelReset()" id="btn-reset-step1-cancel">Cancel</button>
+        <button mat-flat-button color="warn" (click)="proceedToTypeConfirm()" id="btn-reset-step1-continue">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Type-to-confirm overlay -->
+  <div *ngIf="confirmStep === 2" class="reset-modal-backdrop" id="reset-confirm-step2-backdrop">
+    <div class="glass-panel p-4 reset-modal-card border border-danger border-opacity-25" id="reset-confirm-step2-card">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <mat-icon class="text-danger">delete_forever</mat-icon>
+        <h5 class="text-white m-0">Final confirmation</h5>
+      </div>
+      <p class="text-secondary small mb-3">
+        Type <code class="text-danger">{{ confirmationPhrase }}</code> below to permanently delete all data.
+      </p>
+      <input type="text" class="form-control bg-dark text-white border-secondary border-opacity-25 font-mono"
+             [placeholder]="confirmationPhrase"
+             [(ngModel)]="typedConfirmation"
+             (keyup.enter)="confirmReset()"
+             id="reset-confirm-input">
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button mat-stroked-button color="primary" [disabled]="resetting" (click)="cancelReset()" id="btn-reset-step2-cancel">Cancel</button>
+        <button mat-flat-button color="warn" class="d-flex align-items-center gap-2"
+                [disabled]="!typedConfirmationMatches || resetting"
+                (click)="confirmReset()" id="btn-reset-step2-confirm">
+          <mat-spinner *ngIf="resetting" diameter="18"></mat-spinner>
+          <span>{{ resetting ? 'Resetting...' : 'Yes, delete everything' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
