@@ -294,3 +294,13 @@ class NotificationTemplate(Base):
     body_template = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
 
+# ─── App Settings (generic key/value, user-configurable via the Settings page) ─
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    key = Column(String(100), nullable=False, unique=True, index=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+

@@ -28,6 +28,12 @@ export class SettingsComponent implements OnInit {
   statsLoading = false;
   totalRows = 0;
 
+  // Target codebase path (used by RCA's Diagnose in Codebase / Ask Claude)
+  codebasePath = '';
+  codebasePathSaved = '';
+  codebasePathLoading = false;
+  codebasePathSaving = false;
+
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
   confirmStep = 0;
   typedConfirmation = '';
@@ -40,6 +46,41 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit() {
     this.loadStats();
+    this.loadCodebasePath();
+  }
+
+  loadCodebasePath() {
+    this.codebasePathLoading = true;
+    this.apiService.getCodebasePath().subscribe({
+      next: (data) => {
+        this.codebasePath = data.value || '';
+        this.codebasePathSaved = data.value || '';
+        this.codebasePathLoading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching codebase path', err);
+        this.codebasePathLoading = false;
+      }
+    });
+  }
+
+  saveCodebasePath() {
+    this.codebasePathSaving = true;
+    this.apiService.setCodebasePath(this.codebasePath.trim()).subscribe({
+      next: (data) => {
+        this.codebasePathSaving = false;
+        this.codebasePath = data.value || '';
+        this.codebasePathSaved = data.value || '';
+        this.showMessage(
+          this.codebasePathSaved ? `Target codebase path saved: ${this.codebasePathSaved}` : 'Target codebase path cleared.',
+          'success'
+        );
+      },
+      error: (err) => {
+        this.codebasePathSaving = false;
+        this.showMessage(`Failed to save path: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
   }
 
   loadStats() {

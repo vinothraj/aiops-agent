@@ -139,6 +139,34 @@ export interface IncidentGroupDetailResponse extends IncidentGroupResponse {
   occurrences: LogAnalysisResponse[];
 }
 
+export interface AppSettingResponse {
+  key: string;
+  value?: string;
+  updated_at?: string;
+}
+
+export interface CodebaseCandidateFile {
+  file_path: string;
+  match_reason: string;
+  matched_line?: number;
+  snippet?: string;
+}
+
+export interface DiagnoseCodebaseResponse {
+  log_id: number;
+  target_path: string;
+  stack_frames_parsed: string[];
+  candidates: CodebaseCandidateFile[];
+  truncated: boolean;
+}
+
+export interface AskClaudeResponse {
+  log_id: number;
+  model: string;
+  suggestion: string;
+  files_used: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -332,6 +360,25 @@ export class ApiService {
 
   resetDatabase(confirm: string): Observable<{ message: string; tables_cleared: string[] }> {
     return this.http.post<{ message: string; tables_cleared: string[] }>(`${this.baseUrl}/settings/database/reset`, { confirm });
+  }
+
+  getCodebasePath(): Observable<AppSettingResponse> {
+    return this.http.get<AppSettingResponse>(`${this.baseUrl}/settings/codebase-path`);
+  }
+
+  setCodebasePath(path: string): Observable<AppSettingResponse> {
+    return this.http.put<AppSettingResponse>(`${this.baseUrl}/settings/codebase-path`, { path });
+  }
+
+  // ─── RCA Codebase Diagnostics ───────────────────────────────────────────
+
+  diagnoseCodebase(logId: number): Observable<DiagnoseCodebaseResponse> {
+    return this.http.post<DiagnoseCodebaseResponse>(`${this.baseUrl}/rca/${logId}/diagnose-codebase`, {});
+  }
+
+  askClaudeForFix(logId: number, candidateFilePaths?: string[]): Observable<AskClaudeResponse> {
+    const body = candidateFilePaths ? { candidate_file_paths: candidateFilePaths } : {};
+    return this.http.post<AskClaudeResponse>(`${this.baseUrl}/rca/${logId}/ask-claude`, body);
   }
 }
 

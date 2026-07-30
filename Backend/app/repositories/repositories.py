@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select, func, or_, delete, case
 import os
-from app.models.models import LogFile, Log, MonitoredSourceRoot, LogAnalysis
+from app.models.models import LogFile, Log, MonitoredSourceRoot, LogAnalysis, AppSetting
 from app.schemas.schemas import LogFileCreate, LogFileUpdate, LogCreate, MonitoredSourceRootCreate
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -228,6 +228,26 @@ class MonitoredSourceRootRepository:
         db.delete(db_obj)
         db.commit()
 
+class AppSettingRepository:
+    def get(self, db: Session, key: str) -> Optional[str]:
+        row = db.scalar(select(AppSetting).where(AppSetting.key == key))
+        return row.value if row else None
+
+    def get_row(self, db: Session, key: str) -> Optional[AppSetting]:
+        return db.scalar(select(AppSetting).where(AppSetting.key == key))
+
+    def set(self, db: Session, key: str, value: Optional[str]) -> AppSetting:
+        row = db.scalar(select(AppSetting).where(AppSetting.key == key))
+        if row:
+            row.value = value
+        else:
+            row = AppSetting(key=key, value=value)
+            db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+
 log_file_repo = LogFileRepository()
 log_repo = LogRepository()
 monitored_source_root_repo = MonitoredSourceRootRepository()
+app_setting_repo = AppSettingRepository()

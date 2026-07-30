@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, LogResponse, LogFileResponse, LogAnalysisResponse, LogSummaryResponse, LogQueryFilters } from '../../services/api.service';
+import { ApiService, LogResponse, LogFileResponse, LogAnalysisResponse, LogSummaryResponse, LogQueryFilters, DiagnoseCodebaseResponse, AskClaudeResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
@@ -76,6 +76,14 @@ export class LogViewerComponent implements OnInit {
   rcaData: { [key: number]: LogAnalysisResponse | null } = {};
   rcaLoading: { [key: number]: boolean } = {};
   rcaError: { [key: number]: string } = {};
+
+  // RCA -> Codebase diagnostics / Ask Claude
+  diagnosis: { [key: number]: DiagnoseCodebaseResponse | null } = {};
+  diagnosing: { [key: number]: boolean } = {};
+  diagnosisError: { [key: number]: string } = {};
+  claudeSuggestion: { [key: number]: AskClaudeResponse | null } = {};
+  askingClaude: { [key: number]: boolean } = {};
+  claudeError: { [key: number]: string } = {};
 
   // Summary / chart panel
   summary: LogSummaryResponse | null = null;
@@ -339,6 +347,37 @@ export class LogViewerComponent implements OnInit {
         console.error('Failed to trigger RCA:', err);
         this.rcaLoading[logId] = false;
         this.rcaError[logId] = 'Analysis failed. Make sure Gemini API Key is configured and running properly.';
+      }
+    });
+  }
+
+  diagnoseCodebase(logId: number) {
+    this.diagnosing[logId] = true;
+    this.diagnosisError[logId] = '';
+    this.apiService.diagnoseCodebase(logId).subscribe({
+      next: (data) => {
+        this.diagnosis[logId] = data;
+        this.diagnosing[logId] = false;
+      },
+      error: (err) => {
+        this.diagnosing[logId] = false;
+        this.diagnosisError[logId] = err.error?.detail || 'Failed to diagnose codebase.';
+      }
+    });
+  }
+
+  askClaude(logId: number) {
+    this.askingClaude[logId] = true;
+    this.claudeError[logId] = '';
+    const candidatePaths = this.diagnosis[logId]?.candidates.map(c => c.file_path);
+    this.apiService.askClaudeForFix(logId, candidatePaths).subscribe({
+      next: (data) => {
+        this.claudeSuggestion[logId] = data;
+        this.askingClaude[logId] = false;
+      },
+      error: (err) => {
+        this.askingClaude[logId] = false;
+        this.claudeError[logId] = err.error?.detail || 'Failed to get a suggestion from Claude.';
       }
     });
   }

@@ -16,6 +16,39 @@
     </div>
   </div>
 
+  <!-- RCA Codebase Diagnostics -->
+  <div class="glass-panel p-4 mb-4" id="codebase-path-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <mat-icon class="text-primary">folder_open</mat-icon>
+      <h5 class="text-white m-0">RCA Codebase Diagnostics</h5>
+    </div>
+    <p class="text-secondary small mb-3">
+      Local path to the application codebase (e.g. your Broadleaf/ecommerce checkout) that RCA's
+      <strong class="text-white">Diagnose in Codebase</strong> and <strong class="text-white">Ask Claude</strong> features
+      search against. Read-only — this path is only ever scanned/read, never written to.
+    </p>
+
+    <div class="row g-2 align-items-end" id="codebase-path-form">
+      <div class="col-12 col-md-9">
+        <label for="codebase-path-input" class="form-label text-secondary fw-semibold small">Target Codebase Path</label>
+        <input type="text" id="codebase-path-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               placeholder="C:\Projects\ecommerce-app" [(ngModel)]="codebasePath" (keyup.enter)="saveCodebasePath()"
+               [disabled]="codebasePathLoading">
+      </div>
+      <div class="col-12 col-md-3">
+        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
+                style="background: var(--accent-gradient);" [disabled]="codebasePathSaving || codebasePathLoading" (click)="saveCodebasePath()" id="btn-save-codebase-path">
+          <mat-icon *ngIf="!codebasePathSaving">save</mat-icon>
+          <mat-spinner *ngIf="codebasePathSaving" diameter="18"></mat-spinner>
+          Save
+        </button>
+      </div>
+    </div>
+    <div class="small mt-2" [ngClass]="codebasePathSaved ? 'text-success' : 'text-secondary fst-italic'" id="codebase-path-status">
+      {{ codebasePathSaved ? ('Currently configured: ' + codebasePathSaved) : 'Not configured yet — Diagnose in Codebase and Ask Claude will be unavailable until set.' }}
+    </div>
+  </div>
+
   <!-- Danger Zone -->
   <div class="glass-panel p-4 border border-danger border-opacity-25" id="danger-zone-card">
     <div class="d-flex align-items-center gap-2 mb-2">

@@ -350,6 +350,67 @@
                              <pre class="m-0 text-white w-100" style="font-family: var(--font-body); font-size: 0.85rem; white-space: pre-wrap; line-height: 1.5;">{{ rca.recommendation }}</pre>
                            </div>
                         </div>
+
+                        <!-- Diagnose in Codebase / Ask Claude -->
+                        <div class="col-12 mt-2 border-top border-secondary border-opacity-10 pt-3" id="codebase-diagnostics-section">
+                          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                            <h6 class="text-white fw-bold m-0">Codebase Diagnostics</h6>
+                            <div class="d-flex gap-2">
+                              <button mat-stroked-button color="primary" class="d-flex align-items-center gap-2"
+                                      [disabled]="diagnosing[log.id]" (click)="diagnoseCodebase(log.id)" [id]="'btn-diagnose-' + log.id">
+                                <mat-icon *ngIf="!diagnosing[log.id]">travel_explore</mat-icon>
+                                <mat-spinner *ngIf="diagnosing[log.id]" diameter="18"></mat-spinner>
+                                Diagnose in Codebase
+                              </button>
+                              <button mat-stroked-button color="accent" class="d-flex align-items-center gap-2"
+                                      [disabled]="askingClaude[log.id]" (click)="askClaude(log.id)" [id]="'btn-ask-claude-' + log.id">
+                                <mat-icon *ngIf="!askingClaude[log.id]">smart_toy</mat-icon>
+                                <mat-spinner *ngIf="askingClaude[log.id]" diameter="18"></mat-spinner>
+                                Ask Claude
+                              </button>
+                            </div>
+                          </div>
+
+                          <div *ngIf="diagnosisError[log.id]" class="text-danger small p-3 mb-3 bg-danger bg-opacity-10 rounded border border-danger border-opacity-25 d-flex align-items-center gap-2">
+                            <mat-icon style="font-size: 1.2rem; width: auto; height: auto;">error_outline</mat-icon>
+                            {{ diagnosisError[log.id] }}
+                          </div>
+
+                          <div *ngIf="diagnosis[log.id] as diag" class="mb-3" id="diagnosis-results">
+                            <div class="text-secondary small mb-2">
+                              Searched <code class="text-info">{{ diag.target_path }}</code> —
+                              {{ diag.candidates.length }} candidate file{{ diag.candidates.length === 1 ? '' : 's' }} found
+                              <span *ngIf="diag.truncated" class="text-warning"> (scan truncated — repo may be larger than the scan limit)</span>
+                            </div>
+                            <div *ngIf="diag.candidates.length === 0" class="text-secondary small fst-italic p-3 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10">
+                              No matching files found in the configured codebase for this error's stack trace or affected services.
+                            </div>
+                            <div *ngFor="let c of diag.candidates" class="mb-2 p-3 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10">
+                              <div class="text-info small font-mono text-truncate" [title]="c.file_path">{{ c.file_path }}</div>
+                              <div class="text-secondary small fst-italic mb-2">{{ c.match_reason }}</div>
+                              <pre *ngIf="c.snippet" class="bg-black text-white m-0 p-2 rounded border border-secondary border-opacity-10" style="font-size: 0.8rem; max-height: 200px; overflow-y: auto;">{{ c.snippet }}</pre>
+                            </div>
+                          </div>
+
+                          <div *ngIf="claudeError[log.id]" class="text-danger small p-3 mb-3 bg-danger bg-opacity-10 rounded border border-danger border-opacity-25 d-flex align-items-center gap-2">
+                            <mat-icon style="font-size: 1.2rem; width: auto; height: auto;">error_outline</mat-icon>
+                            {{ claudeError[log.id] }}
+                          </div>
+
+                          <div *ngIf="claudeSuggestion[log.id] as suggestion" class="bg-primary bg-opacity-10 border border-primary border-opacity-25 p-4 rounded" id="claude-suggestion-panel">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                              <mat-icon class="text-primary">smart_toy</mat-icon>
+                              <span class="fw-semibold text-white">Claude's Suggested Fix</span>
+                              <span class="badge bg-secondary bg-opacity-25 text-white fw-normal small">{{ suggestion.model }}</span>
+                            </div>
+                            <div class="text-secondary small mb-2">Based on: {{ suggestion.files_used.join(', ') }}</div>
+                            <pre class="m-0 text-white" style="font-family: var(--font-body); font-size: 0.85rem; white-space: pre-wrap; line-height: 1.5; max-height: 500px; overflow-y: auto;">{{ suggestion.suggestion }}</pre>
+                            <div class="text-warning small mt-3 d-flex align-items-center gap-2">
+                              <mat-icon style="font-size: 1.1rem; width: auto; height: auto;">info</mat-icon>
+                              This is a suggestion for review only — nothing has been written to the codebase.
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

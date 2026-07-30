@@ -87,6 +87,14 @@ class LogTimeSeriesPoint(BaseModel):
     count: int
     error_count: int
 
+class AppSettingResponse(BaseModel):
+    key: str
+    value: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+class TargetCodebasePathUpdate(BaseModel):
+    path: str
+
 class LogSummaryResponse(BaseModel):
     """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""
     total_matched: int
@@ -325,4 +333,28 @@ class TimelineEventResponse(BaseModel):
     description: str
     status: Optional[str] = None
     meta: Optional[dict] = None
+
+# ─── Codebase Diagnostics (RCA -> source code) ────────────────────────────────
+
+class CodebaseCandidateFile(BaseModel):
+    file_path: str
+    match_reason: str
+    matched_line: Optional[int] = None
+    snippet: Optional[str] = None
+
+class DiagnoseCodebaseResponse(BaseModel):
+    log_id: int
+    target_path: str
+    stack_frames_parsed: List[str] = []
+    candidates: List[CodebaseCandidateFile] = []
+    truncated: bool = False
+
+class AskClaudeRequest(BaseModel):
+    candidate_file_paths: Optional[List[str]] = None
+
+class AskClaudeResponse(BaseModel):
+    log_id: int
+    model: str
+    suggestion: str
+    files_used: List[str] = []
 
