@@ -140,6 +140,33 @@ class LogAnalysisResponse(BaseModel):
     dependencies: List[AnalysisDependencyResponse] = []
     services: List[AnalysisServiceResponse] = []
     rca_detail: Optional[RCAStructuredResponse] = None
+    incident_group_id: Optional[int] = None
+    is_recurring: bool = False
+    match_score: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+# ─── Phase 8: Incident Grouping Schemas ───────────────────────────────────────
+
+class IncidentGroupResponse(BaseModel):
+    """Summary of a recurring-incident cluster, for the enterprise grouping view."""
+    id: int
+    title: str
+    root_cause_category: str
+    representative_analysis_id: Optional[int] = None
+    occurrence_count: int
+    status: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class IncidentGroupDetailResponse(IncidentGroupResponse):
+    """Group summary plus the representative fix and every recorded occurrence."""
+    representative_analysis: Optional[LogAnalysisResponse] = None
+    occurrences: List[LogAnalysisResponse] = []
 
     class Config:
         from_attributes = True

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
     # Gemini Configuration
+    #GEMINI_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "models/text-embedding-004"
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
 
     # Qdrant Configuration
     QDRANT_PATH: str = "qdrant_data"
+
+    # Incident Grouping / Known-Issue Matching
+    # Cosine similarity (0-1) above which a new error is treated as a confirmed
+    # recurrence of an existing incident group rather than a fresh analysis.
+    INCIDENT_MATCH_SIMILARITY_THRESHOLD: float = 0.93
 
     # GitLab Configuration
     GITLAB_URL: Optional[str] = None

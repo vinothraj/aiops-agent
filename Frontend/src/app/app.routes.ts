@@ -4,6 +4,7 @@ import { LogViewerComponent } from './components/log-viewer/log-viewer';
 import { LogSourcesComponent } from './components/log-sources/log-sources';
 import { RcaDashboardComponent } from './components/rca-dashboard/rca-dashboard';
 import { IncidentQueueComponent } from './components/incident-queue/incident-queue';
+import { IncidentGroupsComponent } from './components/incident-groups/incident-groups';
 import { GitlabDashboardComponent } from './components/gitlab-dashboard/gitlab-dashboard';
 import { NotificationsComponent } from './components/notifications/notifications';
 
@@ -13,6 +14,7 @@ export const routes: Routes = [
   { path: 'log-sources', component: LogSourcesComponent },
   { path: 'rca', component: RcaDashboardComponent },
   { path: 'incidents', component: IncidentQueueComponent },
+  { path: 'incident-groups', component: IncidentGroupsComponent },
   { path: 'gitlab-issues', component: GitlabDashboardComponent },
   { path: 'notifications', component: NotificationsComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

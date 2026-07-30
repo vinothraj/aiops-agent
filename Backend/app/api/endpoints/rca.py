@@ -51,6 +51,9 @@ def trigger_analysis(
             dependencies=[{"id": d.id, "dependency": d.dependency} for d in analysis.dependencies],
             services=[{"id": s.id, "service_name": s.service_name} for s in analysis.services],
             rca_detail=rca_detail,
+            incident_group_id=analysis.incident_group_id,
+            is_recurring=analysis.is_recurring,
+            match_score=analysis.match_score,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

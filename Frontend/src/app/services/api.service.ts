@@ -84,6 +84,25 @@ export interface LogAnalysisResponse {
   dependencies: any[];
   services: any[];
   rca_detail?: RCAStructuredResponse;
+  incident_group_id?: number;
+  is_recurring: boolean;
+  match_score?: number;
+}
+
+export interface IncidentGroupResponse {
+  id: number;
+  title: string;
+  root_cause_category: string;
+  representative_analysis_id?: number;
+  occurrence_count: number;
+  status: string;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export interface IncidentGroupDetailResponse extends IncidentGroupResponse {
+  representative_analysis?: LogAnalysisResponse;
+  occurrences: LogAnalysisResponse[];
 }
 
 @Injectable({
@@ -165,6 +184,19 @@ export class ApiService {
     params = params.set('skip', skip.toString());
     params = params.set('limit', limit.toString());
     return this.http.get<LogAnalysisResponse[]>(`${this.baseUrl}/rca/analyses`, { params });
+  }
+
+  // ─── Incident Grouping (Known-Issue Matching) ──────────────────────────
+
+  getIncidentGroups(skip = 0, limit = 50): Observable<IncidentGroupResponse[]> {
+    let params = new HttpParams();
+    params = params.set('skip', skip.toString());
+    params = params.set('limit', limit.toString());
+    return this.http.get<IncidentGroupResponse[]>(`${this.baseUrl}/incident-groups`, { params });
+  }
+
+  getIncidentGroupDetail(groupId: number): Observable<IncidentGroupDetailResponse> {
+    return this.http.get<IncidentGroupDetailResponse>(`${this.baseUrl}/incident-groups/${groupId}`);
   }
 
   // ─── Incident Triage ──────────────────────────────────────────────────

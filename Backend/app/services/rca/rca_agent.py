@@ -20,10 +20,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.models import Log, LogAnalysis, AnalysisPattern, AnalysisDependency, AnalysisService
+from app.models.models import Log, LogAnalysis, AnalysisPattern, AnalysisDependency, AnalysisService, IncidentGroup
 from app.schemas.schemas import RCAStructuredResponse, RCARequest
 from app.services.rag.rag_service import rag_service
 from app.services.triage.triage_engine import triage_engine
+from app.services.rca import incident_matcher
 
 logger = logging.getLogger(__name__)
 
@@ -363,6 +364,111 @@ class RootCauseAnalysisAgent:
 
         return analysis
 
+    # ─── Incident Grouping / Known-Issue Reuse ─────────────────────────────
+
+    def _parse_recommendation(self, recommendation_text: Optional[str]) -> Dict[str, str]:
+        """Split the combined recommendation blob back into its labeled parts."""
+        fields = {"immediate_fix": "", "short_term_fix": "", "long_term_fix": "",
+                  "recommended_action": "", "incident_recommendation": ""}
+        if not recommendation_text:
+            return fields
+        prefixes = {
+            "Immediate: ": "immediate_fix",
+            "Short-term: ": "short_term_fix",
+            "Long-term: ": "long_term_fix",
+            "Action: ": "recommended_action",
+            "Incident: ": "incident_recommendation",
+        }
+        for line in recommendation_text.splitlines():
+            for prefix, field in prefixes.items():
+                if line.startswith(prefix):
+                    fields[field] = line[len(prefix):].strip()
+        return fields
+
+    def _create_new_group(self, db: Session, target_log: Log, analysis: LogAnalysis) -> IncidentGroup:
+        """First time we've seen this error signature: start tracking it as a group."""
+        fingerprint = incident_matcher.compute_fingerprint(target_log)
+        group = IncidentGroup(
+            fingerprint=fingerprint,
+            title=f"{analysis.root_cause_category} in {target_log.service_name}",
+            root_cause_category=analysis.root_cause_category,
+            representative_analysis_id=analysis.id,
+            occurrence_count=1,
+        )
+        db.add(group)
+        db.flush()
+
+        analysis.incident_group_id = group.id
+        db.commit()
+        db.refresh(group)
+        logger.info(f"Created new incident group {group.id} (fingerprint={fingerprint[:12]}...)")
+        return group
+
+    def _reuse_known_solution(
+        self, db: Session, log_id: int, target_log: Log, match: "incident_matcher.MatchResult"
+    ) -> Dict[str, Any]:
+        """
+        This error is a confirmed recurrence of a known incident. Skip the Gemini
+        call entirely and copy the group's existing solution onto a new record,
+        so the recurrence is tracked without spending AI tokens re-deriving it.
+        """
+        group = match.group
+        representative = group.representative_analysis
+
+        analysis = LogAnalysis(
+            log_id=log_id,
+            root_cause=representative.root_cause,
+            root_cause_category=representative.root_cause_category,
+            severity=representative.severity,
+            business_impact=representative.business_impact,
+            technical_impact=representative.technical_impact,
+            confidence_score=representative.confidence_score,
+            recommendation=representative.recommendation,
+            summary=representative.summary,
+            incident_group_id=group.id,
+            is_recurring=True,
+            match_score=match.score,
+        )
+        db.add(analysis)
+        db.flush()
+
+        for pattern in representative.patterns:
+            db.add(AnalysisPattern(analysis_id=analysis.id, pattern=pattern.pattern))
+        for dep in representative.dependencies:
+            db.add(AnalysisDependency(analysis_id=analysis.id, dependency=dep.dependency))
+        for svc in representative.services:
+            db.add(AnalysisService(analysis_id=analysis.id, service_name=svc.service_name))
+
+        group.occurrence_count += 1
+        group.last_seen_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(analysis)
+
+        logger.info(
+            f"Reused known solution from group {group.id} for log_id={log_id} "
+            f"(match_type={match.match_type}, score={match.score:.3f}, "
+            f"occurrence #{group.occurrence_count})"
+        )
+
+        recommendation_fields = self._parse_recommendation(representative.recommendation)
+        rca_response = RCAStructuredResponse(
+            incident_type=group.title,
+            root_cause_category=analysis.root_cause_category,
+            root_cause=analysis.root_cause,
+            severity=analysis.severity,
+            business_impact=analysis.business_impact or "",
+            technical_impact=analysis.technical_impact or "",
+            affected_services=[s.service_name for s in analysis.services],
+            affected_dependencies=[d.dependency for d in analysis.dependencies],
+            pattern_detected=[p.pattern for p in analysis.patterns],
+            confidence_score=analysis.confidence_score,
+            summary=analysis.summary or "",
+            **recommendation_fields,
+        )
+
+        return {"analysis": analysis, "rca_detail": rca_response, "match": match}
+
     # ─── Public API ────────────────────────────────────────────────────────
 
     def analyze(
@@ -392,22 +498,30 @@ class RootCauseAnalysisAgent:
             f"service={target_log.service_name}, level={target_log.log_level}"
         )
 
-        # 2. Gather surrounding context
-        context = self._get_surrounding_logs(db, target_log)
-        logger.info(
-            f"Context gathered: {len(context['previous_logs'])} before, "
-            f"{len(context['subsequent_logs'])} after"
-        )
+        # 2. Known-issue check: is this a confirmed recurrence of an already-analyzed
+        #    incident? If so, reuse its solution instead of spending Gemini tokens on it.
+        match = incident_matcher.find_matching_group(db, target_log)
+        if match:
+            result = self._reuse_known_solution(db, log_id, target_log, match)
+            analysis, rca_response = result["analysis"], result["rca_detail"]
+        else:
+            # 2a. Gather surrounding context
+            context = self._get_surrounding_logs(db, target_log)
+            logger.info(
+                f"Context gathered: {len(context['previous_logs'])} before, "
+                f"{len(context['subsequent_logs'])} after"
+            )
 
-        # 3. Build the prompt
-        request_metadata = metadata or RCARequest(service_name=target_log.service_name)
-        prompt = self._build_prompt(target_log, context, request_metadata)
+            # 2b. Build the prompt
+            request_metadata = metadata or RCARequest(service_name=target_log.service_name)
+            prompt = self._build_prompt(target_log, context, request_metadata)
 
-        # 4. Call Gemini
-        rca_response = self._call_gemini(prompt)
+            # 2c. Call Gemini
+            rca_response = self._call_gemini(prompt)
 
-        # 5. Persist to database
-        analysis = self._persist_analysis(db, log_id, target_log, rca_response)
+            # 2d. Persist to database and start tracking it as a new incident group
+            analysis = self._persist_analysis(db, log_id, target_log, rca_response)
+            self._create_new_group(db, target_log, analysis)
 
         # 6. Auto-triage: chain into the Incident Decision Engine
         triage_decision = None

@@ -58,11 +58,17 @@ class LogAnalysis(Base):
     summary = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
 
+    # Incident grouping / dedup (Phase 8)
+    incident_group_id = Column(Integer, ForeignKey("incident_groups.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_recurring = Column(Boolean, default=False, nullable=False)
+    match_score = Column(Float, nullable=True)  # similarity to the matched group, when is_recurring
+
     # Relationships
     log = relationship("Log", backref="analyses")
     patterns = relationship("AnalysisPattern", back_populates="analysis", cascade="all, delete-orphan")
     dependencies = relationship("AnalysisDependency", back_populates="analysis", cascade="all, delete-orphan")
     services = relationship("AnalysisService", back_populates="analysis", cascade="all, delete-orphan")
+    incident_group = relationship("IncidentGroup", foreign_keys=[incident_group_id], back_populates="occurrences")
 
 class AnalysisPattern(Base):
     __tablename__ = "analysis_patterns"
@@ -90,6 +96,38 @@ class AnalysisService(Base):
     service_name = Column(String(255), nullable=False)
 
     analysis = relationship("LogAnalysis", back_populates="services")
+
+# ─── Phase 8: Incident Grouping / Known-Issue Matching ─────────────────────
+
+class IncidentGroup(Base):
+    """
+    Clusters recurring incidents that share the same underlying root cause.
+
+    The first occurrence of an error signature creates the group and becomes
+    its representative analysis. Later occurrences that match (exact fingerprint
+    or high vector similarity) attach to the same group instead of re-running
+    a full AI analysis, so the group's solution is reused as-is.
+    """
+    __tablename__ = "incident_groups"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    fingerprint = Column(String(64), nullable=False, unique=True, index=True)
+    title = Column(String(255), nullable=False)
+    root_cause_category = Column(String(100), nullable=False, index=True)
+    representative_analysis_id = Column(Integer, ForeignKey("log_analyses.id", ondelete="SET NULL"), nullable=True)
+    occurrence_count = Column(Integer, default=1, nullable=False)
+    status = Column(String(50), default="ACTIVE", nullable=False)  # ACTIVE, RESOLVED
+    first_seen_at = Column(DateTime, default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    representative_analysis = relationship("LogAnalysis", foreign_keys=[representative_analysis_id])
+    occurrences = relationship(
+        "LogAnalysis",
+        back_populates="incident_group",
+        foreign_keys="LogAnalysis.incident_group_id",
+        order_by="LogAnalysis.created_at",
+    )
 
 # ─── Phase 4: RAG Knowledge Models ─────────────────────────────────────────
 
