@@ -12,10 +12,14 @@ from app.repositories.repositories import app_setting_repo
 from app.schemas.schemas import AppSettingResponse, TargetCodebasePathUpdate, AiProviderSettingsResponse, AiProviderSettingsUpdate
 from app.services.rca.ai_providers import (
     get_provider_config,
+    is_claude_configured,
+    is_gemini_configured,
     AI_PROVIDER_KEY,
     OLLAMA_BASE_URL_KEY,
     OLLAMA_MODEL_KEY,
     AUTO_RCA_ENABLED_KEY,
+    CLAUDE_API_KEY_SETTING,
+    GEMINI_API_KEY_SETTING,
     VALID_PROVIDERS,
 )
 
@@ -84,15 +88,16 @@ def get_ai_provider_settings(db: Session = Depends(get_db)):
     """
     Returns the currently configured AI provider (Claude / Gemini / local
     Ollama) used by RCA's "Ask AI" feature, plus whether each cloud
-    provider's API key is actually set (never the key values themselves).
+    provider's API key is actually set (never the key values themselves --
+    checks both a Settings-stored key and the .env fallback).
     """
     config = get_provider_config(db)
     return AiProviderSettingsResponse(
         provider=config["provider"],
         ollama_base_url=config["ollama_base_url"],
         ollama_model=config["ollama_model"],
-        claude_configured=bool(app_settings.CLAUDE_API_KEY),
-        gemini_configured=bool(app_settings.GEMINI_API_KEY),
+        claude_configured=is_claude_configured(db),
+        gemini_configured=is_gemini_configured(db),
         auto_rca_enabled=config["auto_rca_enabled"],
     )
 
@@ -101,11 +106,14 @@ def get_ai_provider_settings(db: Session = Depends(get_db)):
 def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = Depends(get_db)):
     """
     Switches which AI provider RCA's "Ask AI" feature uses, and/or updates
-    the local Ollama connection details, and/or toggles automatic RCA on
-    newly-ingested ERROR logs. Provider choice, Ollama endpoint, and the
-    auto-RCA flag are all non-secret, so they're stored directly (API keys
-    stay in .env, same as elsewhere in this app). Note: auto-RCA only ever
-    actually runs when the provider is Ollama, regardless of this flag --
+    the local Ollama connection details, toggles automatic RCA on
+    newly-ingested ERROR logs, and/or sets the Claude/Gemini API key directly
+    from this UI (stored in the database, taking precedence over the .env
+    file -- so both providers are fully configurable without touching the
+    codebase). Send an empty string for claude_api_key/gemini_api_key to
+    clear the stored key and fall back to .env; omit the field entirely to
+    leave whatever's currently stored untouched. Note: auto-RCA only ever
+    actually runs when the provider is Ollama, regardless of that flag --
     see auto_trigger.py.
     """
     provider = payload.provider.strip().lower()
@@ -119,14 +127,18 @@ def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = De
         app_setting_repo.set(db, OLLAMA_MODEL_KEY, payload.ollama_model.strip())
     if payload.auto_rca_enabled is not None:
         app_setting_repo.set(db, AUTO_RCA_ENABLED_KEY, "true" if payload.auto_rca_enabled else "false")
+    if payload.claude_api_key is not None:
+        app_setting_repo.set(db, CLAUDE_API_KEY_SETTING, payload.claude_api_key.strip())
+    if payload.gemini_api_key is not None:
+        app_setting_repo.set(db, GEMINI_API_KEY_SETTING, payload.gemini_api_key.strip())
 
     config = get_provider_config(db)
     return AiProviderSettingsResponse(
         provider=config["provider"],
         ollama_base_url=config["ollama_base_url"],
         ollama_model=config["ollama_model"],
-        claude_configured=bool(app_settings.CLAUDE_API_KEY),
-        gemini_configured=bool(app_settings.GEMINI_API_KEY),
+        claude_configured=is_claude_configured(db),
+        gemini_configured=is_gemini_configured(db),
         auto_rca_enabled=config["auto_rca_enabled"],
     )
 

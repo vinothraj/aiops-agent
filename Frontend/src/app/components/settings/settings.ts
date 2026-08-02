@@ -42,6 +42,10 @@ export class SettingsComponent implements OnInit {
   aiProviderLoading = false;
   aiProviderSaving = false;
   autoRcaEnabled = false;
+  // Write-only inputs: never populated from the server response (the API
+  // never echoes a stored key back), cleared again after every save.
+  claudeApiKeyInput = '';
+  geminiApiKeyInput = '';
 
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
   confirmStep = 0;
@@ -79,20 +83,55 @@ export class SettingsComponent implements OnInit {
 
   saveAiProvider() {
     this.aiProviderSaving = true;
-    this.apiService.setAiProviderSettings({
+    const payload: {
+      provider: string; ollama_base_url?: string; ollama_model?: string; auto_rca_enabled?: boolean;
+      claude_api_key?: string; gemini_api_key?: string;
+    } = {
       provider: this.selectedProvider,
       ollama_base_url: this.ollamaBaseUrl.trim(),
       ollama_model: this.ollamaModel.trim(),
       auto_rca_enabled: this.autoRcaEnabled
-    }).subscribe({
+    };
+    // Only include a key if the user actually typed one -- omitting it
+    // leaves whatever's already stored untouched (see clearApiKey() to
+    // explicitly remove one instead).
+    if (this.claudeApiKeyInput.trim()) payload.claude_api_key = this.claudeApiKeyInput.trim();
+    if (this.geminiApiKeyInput.trim()) payload.gemini_api_key = this.geminiApiKeyInput.trim();
+
+    this.apiService.setAiProviderSettings(payload).subscribe({
       next: (data) => {
         this.aiProvider = data;
         this.aiProviderSaving = false;
+        this.claudeApiKeyInput = '';
+        this.geminiApiKeyInput = '';
         this.showMessage(`AI provider set to ${data.provider}.`, 'success');
       },
       error: (err) => {
         this.aiProviderSaving = false;
         this.showMessage(`Failed to save AI provider: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
+  }
+
+  clearApiKey(provider: 'claude' | 'gemini') {
+    this.aiProviderSaving = true;
+    const payload: any = {
+      provider: this.selectedProvider,
+      ollama_base_url: this.ollamaBaseUrl.trim(),
+      ollama_model: this.ollamaModel.trim(),
+      auto_rca_enabled: this.autoRcaEnabled
+    };
+    payload[provider === 'claude' ? 'claude_api_key' : 'gemini_api_key'] = '';
+
+    this.apiService.setAiProviderSettings(payload).subscribe({
+      next: (data) => {
+        this.aiProvider = data;
+        this.aiProviderSaving = false;
+        this.showMessage(`Cleared stored ${provider} API key (falls back to .env if set there).`, 'success');
+      },
+      error: (err) => {
+        this.aiProviderSaving = false;
+        this.showMessage(`Failed to clear key: ${err.error?.detail || err.message}`, 'danger');
       }
     });
   }

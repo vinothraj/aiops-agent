@@ -81,6 +81,19 @@
         </div>
       </ng-container>
 
+      <div class="col-12 col-md-8" *ngIf="selectedProvider === 'claude'">
+        <label for="claude-api-key-input" class="form-label text-secondary fw-semibold small">Claude API Key</label>
+        <input type="password" id="claude-api-key-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               [placeholder]="aiProvider?.claude_configured ? 'Configured — leave blank to keep current key' : 'sk-ant-...'"
+               [(ngModel)]="claudeApiKeyInput" autocomplete="new-password">
+      </div>
+      <div class="col-12 col-md-8" *ngIf="selectedProvider === 'gemini'">
+        <label for="gemini-api-key-input" class="form-label text-secondary fw-semibold small">Gemini API Key</label>
+        <input type="password" id="gemini-api-key-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               [placeholder]="aiProvider?.gemini_configured ? 'Configured — leave blank to keep current key' : 'AIza...'"
+               [(ngModel)]="geminiApiKeyInput" autocomplete="new-password">
+      </div>
+
       <div class="col-12" [ngClass]="selectedProvider === 'ollama' ? 'col-md-12' : 'col-md-4'">
         <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
                 style="background: var(--accent-gradient);" [disabled]="aiProviderSaving || aiProviderLoading" (click)="saveAiProvider()" id="btn-save-ai-provider">
@@ -92,11 +105,13 @@
     </div>
 
     <div *ngIf="aiProvider" class="small text-secondary mb-3" id="ai-provider-status">
-      <span *ngIf="selectedProvider === 'claude'">
-        Claude API key: <span [ngClass]="aiProvider.claude_configured ? 'text-success' : 'text-warning'">{{ aiProvider.claude_configured ? 'configured' : 'not set in .env' }}</span>
+      <span *ngIf="selectedProvider === 'claude'" class="d-inline-flex align-items-center gap-2">
+        Claude API key: <span [ngClass]="aiProvider.claude_configured ? 'text-success' : 'text-warning'">{{ aiProvider.claude_configured ? 'configured' : 'not set' }}</span>
+        <button *ngIf="aiProvider.claude_configured" class="btn btn-link btn-sm text-danger p-0" [disabled]="aiProviderSaving" (click)="clearApiKey('claude')" id="btn-clear-claude-key">Clear</button>
       </span>
-      <span *ngIf="selectedProvider === 'gemini'">
-        Gemini API key: <span [ngClass]="aiProvider.gemini_configured ? 'text-success' : 'text-warning'">{{ aiProvider.gemini_configured ? 'configured' : 'not set in .env' }}</span>
+      <span *ngIf="selectedProvider === 'gemini'" class="d-inline-flex align-items-center gap-2">
+        Gemini API key: <span [ngClass]="aiProvider.gemini_configured ? 'text-success' : 'text-warning'">{{ aiProvider.gemini_configured ? 'configured' : 'not set' }}</span>
+        <button *ngIf="aiProvider.gemini_configured" class="btn btn-link btn-sm text-danger p-0" [disabled]="aiProviderSaving" (click)="clearApiKey('gemini')" id="btn-clear-gemini-key">Clear</button>
       </span>
       <span *ngIf="selectedProvider === 'ollama'">
         Make sure Ollama is running locally (<code class="text-info">ollama serve</code>) with the model pulled (<code class="text-info">ollama pull {{ ollamaModel || 'llama3.1:8b' }}</code>).

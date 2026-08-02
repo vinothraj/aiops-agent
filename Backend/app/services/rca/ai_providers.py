@@ -13,6 +13,8 @@ AI_PROVIDER_KEY = "ai_provider"
 OLLAMA_BASE_URL_KEY = "ollama_base_url"
 OLLAMA_MODEL_KEY = "ollama_model"
 AUTO_RCA_ENABLED_KEY = "auto_rca_enabled"
+CLAUDE_API_KEY_SETTING = "claude_api_key"
+GEMINI_API_KEY_SETTING = "gemini_api_key"
 
 DEFAULT_PROVIDER = "claude"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
@@ -40,6 +42,24 @@ def get_provider_config(db: Session) -> dict:
     }
 
 
+def get_claude_api_key(db: Session) -> Optional[str]:
+    """DB-stored key (set via Settings) takes precedence; falls back to CLAUDE_API_KEY in .env."""
+    return app_setting_repo.get(db, CLAUDE_API_KEY_SETTING) or app_settings.CLAUDE_API_KEY
+
+
+def get_gemini_api_key(db: Session) -> Optional[str]:
+    """DB-stored key (set via Settings) takes precedence; falls back to GEMINI_API_KEY in .env."""
+    return app_setting_repo.get(db, GEMINI_API_KEY_SETTING) or app_settings.GEMINI_API_KEY
+
+
+def is_claude_configured(db: Session) -> bool:
+    return bool(get_claude_api_key(db))
+
+
+def is_gemini_configured(db: Session) -> bool:
+    return bool(get_gemini_api_key(db))
+
+
 def get_ai_suggestion(db: Session, prompt: str, system_prompt: Optional[str] = None) -> Tuple[str, str, str]:
     """
     Dispatches to whichever provider is currently configured. Returns
@@ -51,9 +71,9 @@ def get_ai_suggestion(db: Session, prompt: str, system_prompt: Optional[str] = N
     provider = config["provider"]
 
     if provider == "claude":
-        model, text = _call_claude(prompt, system_prompt)
+        model, text = _call_claude(db, prompt, system_prompt)
     elif provider == "gemini":
-        model, text = _call_gemini(prompt, system_prompt)
+        model, text = _call_gemini(db, prompt, system_prompt)
     elif provider == "ollama":
         model, text = _call_ollama(prompt, config["ollama_base_url"], config["ollama_model"], system_prompt)
     else:
@@ -62,13 +82,14 @@ def get_ai_suggestion(db: Session, prompt: str, system_prompt: Optional[str] = N
     return provider, model, text
 
 
-def _call_claude(prompt: str, system_prompt: Optional[str] = None) -> Tuple[str, str]:
-    if not app_settings.CLAUDE_API_KEY:
-        raise AiProviderError("CLAUDE_API_KEY is not configured. Set it in the backend .env file.")
+def _call_claude(db: Session, prompt: str, system_prompt: Optional[str] = None) -> Tuple[str, str]:
+    api_key = get_claude_api_key(db)
+    if not api_key:
+        raise AiProviderError("Claude API key is not configured. Set it in Settings → AI Provider, or CLAUDE_API_KEY in the backend .env file.")
 
     import anthropic
     try:
-        client = anthropic.Anthropic(api_key=app_settings.CLAUDE_API_KEY)
+        client = anthropic.Anthropic(api_key=api_key)
         kwargs = dict(model=app_settings.CLAUDE_MODEL, max_tokens=4096, messages=[{"role": "user", "content": prompt}])
         if system_prompt:
             kwargs["system"] = system_prompt
@@ -80,13 +101,14 @@ def _call_claude(prompt: str, system_prompt: Optional[str] = None) -> Tuple[str,
     return app_settings.CLAUDE_MODEL, text
 
 
-def _call_gemini(prompt: str, system_prompt: Optional[str] = None) -> Tuple[str, str]:
-    if not app_settings.GEMINI_API_KEY:
-        raise AiProviderError("GEMINI_API_KEY is not configured. Set it in the backend .env file.")
+def _call_gemini(db: Session, prompt: str, system_prompt: Optional[str] = None) -> Tuple[str, str]:
+    api_key = get_gemini_api_key(db)
+    if not api_key:
+        raise AiProviderError("Gemini API key is not configured. Set it in Settings → AI Provider, or GEMINI_API_KEY in the backend .env file.")
 
     import google.generativeai as genai
     try:
-        genai.configure(api_key=app_settings.GEMINI_API_KEY)
+        genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name=app_settings.GEMINI_MODEL, system_instruction=system_prompt)
         response = model.generate_content(prompt)
         # .text is a property that can itself raise (e.g. no candidates

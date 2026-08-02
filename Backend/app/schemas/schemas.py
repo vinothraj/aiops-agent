@@ -108,6 +108,11 @@ class AiProviderSettingsUpdate(BaseModel):
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     auto_rca_enabled: Optional[bool] = None
+    # Write-only: never echoed back in AiProviderSettingsResponse. Omit to
+    # leave the stored key untouched; send "" to explicitly clear it back to
+    # falling through to the .env value.
+    claude_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
 
 class LogSummaryResponse(BaseModel):
     """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""

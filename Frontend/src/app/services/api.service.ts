@@ -386,7 +386,7 @@ export class ApiService {
     return this.http.get<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`);
   }
 
-  setAiProviderSettings(payload: { provider: string; ollama_base_url?: string; ollama_model?: string; auto_rca_enabled?: boolean }): Observable<AiProviderSettingsResponse> {
+  setAiProviderSettings(payload: { provider: string; ollama_base_url?: string; ollama_model?: string; auto_rca_enabled?: boolean; claude_api_key?: string; gemini_api_key?: string }): Observable<AiProviderSettingsResponse> {
     return this.http.put<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`, payload);
   }
 
