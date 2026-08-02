@@ -363,10 +363,10 @@
                                 Diagnose in Codebase
                               </button>
                               <button mat-stroked-button color="accent" class="d-flex align-items-center gap-2"
-                                      [disabled]="askingClaude[log.id]" (click)="askClaude(log.id)" [id]="'btn-ask-claude-' + log.id">
-                                <mat-icon *ngIf="!askingClaude[log.id]">smart_toy</mat-icon>
-                                <mat-spinner *ngIf="askingClaude[log.id]" diameter="18"></mat-spinner>
-                                Ask Claude
+                                      [disabled]="askingAi[log.id]" (click)="askAi(log.id)" [id]="'btn-ask-ai-' + log.id">
+                                <mat-icon *ngIf="!askingAi[log.id]">smart_toy</mat-icon>
+                                <mat-spinner *ngIf="askingAi[log.id]" diameter="18"></mat-spinner>
+                                Ask AI
                               </button>
                             </div>
                           </div>
@@ -392,16 +392,16 @@
                             </div>
                           </div>
 
-                          <div *ngIf="claudeError[log.id]" class="text-danger small p-3 mb-3 bg-danger bg-opacity-10 rounded border border-danger border-opacity-25 d-flex align-items-center gap-2">
+                          <div *ngIf="aiError[log.id]" class="text-danger small p-3 mb-3 bg-danger bg-opacity-10 rounded border border-danger border-opacity-25 d-flex align-items-center gap-2">
                             <mat-icon style="font-size: 1.2rem; width: auto; height: auto;">error_outline</mat-icon>
-                            {{ claudeError[log.id] }}
+                            {{ aiError[log.id] }}
                           </div>
 
-                          <div *ngIf="claudeSuggestion[log.id] as suggestion" class="bg-primary bg-opacity-10 border border-primary border-opacity-25 p-4 rounded" id="claude-suggestion-panel">
+                          <div *ngIf="aiSuggestion[log.id] as suggestion" class="bg-primary bg-opacity-10 border border-primary border-opacity-25 p-4 rounded" id="ai-suggestion-panel">
                             <div class="d-flex align-items-center gap-2 mb-2">
                               <mat-icon class="text-primary">smart_toy</mat-icon>
-                              <span class="fw-semibold text-white">Claude's Suggested Fix</span>
-                              <span class="badge bg-secondary bg-opacity-25 text-white fw-normal small">{{ suggestion.model }}</span>
+                              <span class="fw-semibold text-white">AI Suggested Fix</span>
+                              <span class="badge bg-secondary bg-opacity-25 text-white fw-normal small">{{ suggestion.provider }} / {{ suggestion.model }}</span>
                             </div>
                             <div class="text-secondary small mb-2">Based on: {{ suggestion.files_used.join(', ') }}</div>
                             <pre class="m-0 text-white" style="font-family: var(--font-body); font-size: 0.85rem; white-space: pre-wrap; line-height: 1.5; max-height: 500px; overflow-y: auto;">{{ suggestion.suggestion }}</pre>

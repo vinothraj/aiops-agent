@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, LogResponse, LogFileResponse, LogAnalysisResponse, LogSummaryResponse, LogQueryFilters, DiagnoseCodebaseResponse, AskClaudeResponse } from '../../services/api.service';
+import { ApiService, LogResponse, LogFileResponse, LogAnalysisResponse, LogSummaryResponse, LogQueryFilters, DiagnoseCodebaseResponse, AskAiResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
@@ -77,13 +77,13 @@ export class LogViewerComponent implements OnInit {
   rcaLoading: { [key: number]: boolean } = {};
   rcaError: { [key: number]: string } = {};
 
-  // RCA -> Codebase diagnostics / Ask Claude
+  // RCA -> Codebase diagnostics / Ask AI
   diagnosis: { [key: number]: DiagnoseCodebaseResponse | null } = {};
   diagnosing: { [key: number]: boolean } = {};
   diagnosisError: { [key: number]: string } = {};
-  claudeSuggestion: { [key: number]: AskClaudeResponse | null } = {};
-  askingClaude: { [key: number]: boolean } = {};
-  claudeError: { [key: number]: string } = {};
+  aiSuggestion: { [key: number]: AskAiResponse | null } = {};
+  askingAi: { [key: number]: boolean } = {};
+  aiError: { [key: number]: string } = {};
 
   // Summary / chart panel
   summary: LogSummaryResponse | null = null;
@@ -366,18 +366,18 @@ export class LogViewerComponent implements OnInit {
     });
   }
 
-  askClaude(logId: number) {
-    this.askingClaude[logId] = true;
-    this.claudeError[logId] = '';
+  askAi(logId: number) {
+    this.askingAi[logId] = true;
+    this.aiError[logId] = '';
     const candidatePaths = this.diagnosis[logId]?.candidates.map(c => c.file_path);
-    this.apiService.askClaudeForFix(logId, candidatePaths).subscribe({
+    this.apiService.askAiForFix(logId, candidatePaths).subscribe({
       next: (data) => {
-        this.claudeSuggestion[logId] = data;
-        this.askingClaude[logId] = false;
+        this.aiSuggestion[logId] = data;
+        this.askingAi[logId] = false;
       },
       error: (err) => {
-        this.askingClaude[logId] = false;
-        this.claudeError[logId] = err.error?.detail || 'Failed to get a suggestion from Claude.';
+        this.askingAi[logId] = false;
+        this.aiError[logId] = err.error?.detail || 'Failed to get a suggestion from the AI provider.';
       }
     });
   }

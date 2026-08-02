@@ -1,12 +1,10 @@
 import logging
 import os
 
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.core.config import settings
 from app.database.session import get_db
 from app.repositories.repositories import app_setting_repo
 from app.schemas.schemas import (
@@ -15,19 +13,20 @@ from app.schemas.schemas import (
     LogAnalysisResponse,
     DiagnoseCodebaseResponse,
     CodebaseCandidateFile,
-    AskClaudeRequest,
-    AskClaudeResponse,
+    AskAiRequest,
+    AskAiResponse,
 )
 from app.services.rca.rca_agent import rca_agent
 from app.services.rca.codebase_diagnostics import parse_stack_trace_frames, search_codebase_for_candidates
+from app.services.rca.ai_providers import get_ai_suggestion, AiProviderError
 from app.api.endpoints.settings import TARGET_CODEBASE_PATH_KEY
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-MAX_FILES_SENT_TO_CLAUDE = 3
-MAX_CHARS_PER_FILE_TO_CLAUDE = 6000
+MAX_FILES_SENT_TO_AI = 3
+MAX_CHARS_PER_FILE_TO_AI = 6000
 
 
 def _get_configured_codebase_path(db: Session) -> str:
@@ -161,19 +160,14 @@ def diagnose_codebase(log_id: int, db: Session = Depends(get_db)):
     return _diagnose(db, log_id)
 
 
-@router.post("/{log_id}/ask-claude", response_model=AskClaudeResponse)
-def ask_claude_for_fix(log_id: int, payload: Optional[AskClaudeRequest] = None, db: Session = Depends(get_db)):
+@router.post("/{log_id}/ask-ai", response_model=AskAiResponse)
+def ask_ai_for_fix(log_id: int, payload: Optional[AskAiRequest] = None, db: Session = Depends(get_db)):
     """
-    Sends the RCA context plus the top candidate files' content to Claude and
+    Sends the RCA context plus the top candidate files' content to whichever
+    AI provider is currently configured (Claude / Gemini / local Ollama) and
     returns a suggested fix as text/diff for the user to review. Never writes
     the suggestion back to the target codebase, creates branches, or commits.
     """
-    if not settings.CLAUDE_API_KEY:
-        raise HTTPException(
-            status_code=400,
-            detail="CLAUDE_API_KEY is not configured. Set it in the backend .env file."
-        )
-
     analysis = rca_agent.get_analysis(db, log_id)
     if not analysis:
         raise HTTPException(status_code=404, detail=f"No RCA analysis found for log_id={log_id}")
@@ -190,17 +184,17 @@ def ask_claude_for_fix(log_id: int, payload: Optional[AskClaudeRequest] = None, 
     if not candidate_paths:
         raise HTTPException(
             status_code=400,
-            detail='No candidate files found to send to Claude. Run "Diagnose in Codebase" first.'
+            detail='No candidate files found to send to the AI. Run "Diagnose in Codebase" first.'
         )
 
     file_sections = []
     files_used = []
-    for file_path in candidate_paths[:MAX_FILES_SENT_TO_CLAUDE]:
+    for file_path in candidate_paths[:MAX_FILES_SENT_TO_AI]:
         try:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read(MAX_CHARS_PER_FILE_TO_CLAUDE)
+                content = f.read(MAX_CHARS_PER_FILE_TO_AI)
         except Exception as e:
-            logger.warning(f"Could not read {file_path} for Claude prompt: {e}")
+            logger.warning(f"Could not read {file_path} for AI prompt: {e}")
             continue
         file_sections.append(f"--- {file_path} ---\n{content}")
         files_used.append(file_path)
@@ -231,20 +225,17 @@ Based on the above, explain the likely bug in these files and propose a concrete
 """
 
     try:
-        client = anthropic.Anthropic(api_key=settings.CLAUDE_API_KEY)
-        response = client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        suggestion = "".join(block.text for block in response.content if block.type == "text")
+        provider, model, suggestion = get_ai_suggestion(db, prompt)
+    except AiProviderError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Claude API call failed: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"Claude API call failed: {str(e)}")
+        logger.error(f"AI provider call failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=502, detail=f"AI provider call failed: {str(e)}")
 
-    return AskClaudeResponse(
+    return AskAiResponse(
         log_id=log_id,
-        model=settings.CLAUDE_MODEL,
+        provider=provider,
+        model=model,
         suggestion=suggestion,
         files_used=files_used
     )

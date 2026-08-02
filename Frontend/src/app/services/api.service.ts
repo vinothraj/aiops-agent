@@ -160,11 +160,20 @@ export interface DiagnoseCodebaseResponse {
   truncated: boolean;
 }
 
-export interface AskClaudeResponse {
+export interface AskAiResponse {
   log_id: number;
+  provider: string;
   model: string;
   suggestion: string;
   files_used: string[];
+}
+
+export interface AiProviderSettingsResponse {
+  provider: 'claude' | 'gemini' | 'ollama';
+  ollama_base_url: string;
+  ollama_model: string;
+  claude_configured: boolean;
+  gemini_configured: boolean;
 }
 
 @Injectable({
@@ -370,15 +379,23 @@ export class ApiService {
     return this.http.put<AppSettingResponse>(`${this.baseUrl}/settings/codebase-path`, { path });
   }
 
+  getAiProviderSettings(): Observable<AiProviderSettingsResponse> {
+    return this.http.get<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`);
+  }
+
+  setAiProviderSettings(payload: { provider: string; ollama_base_url?: string; ollama_model?: string }): Observable<AiProviderSettingsResponse> {
+    return this.http.put<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`, payload);
+  }
+
   // ─── RCA Codebase Diagnostics ───────────────────────────────────────────
 
   diagnoseCodebase(logId: number): Observable<DiagnoseCodebaseResponse> {
     return this.http.post<DiagnoseCodebaseResponse>(`${this.baseUrl}/rca/${logId}/diagnose-codebase`, {});
   }
 
-  askClaudeForFix(logId: number, candidateFilePaths?: string[]): Observable<AskClaudeResponse> {
+  askAiForFix(logId: number, candidateFilePaths?: string[]): Observable<AskAiResponse> {
     const body = candidateFilePaths ? { candidate_file_paths: candidateFilePaths } : {};
-    return this.http.post<AskClaudeResponse>(`${this.baseUrl}/rca/${logId}/ask-claude`, body);
+    return this.http.post<AskAiResponse>(`${this.baseUrl}/rca/${logId}/ask-ai`, body);
   }
 }
 

@@ -6,9 +6,17 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.config import settings as app_settings
 from app.database.session import Base, engine, get_db
 from app.repositories.repositories import app_setting_repo
-from app.schemas.schemas import AppSettingResponse, TargetCodebasePathUpdate
+from app.schemas.schemas import AppSettingResponse, TargetCodebasePathUpdate, AiProviderSettingsResponse, AiProviderSettingsUpdate
+from app.services.rca.ai_providers import (
+    get_provider_config,
+    AI_PROVIDER_KEY,
+    OLLAMA_BASE_URL_KEY,
+    OLLAMA_MODEL_KEY,
+    VALID_PROVIDERS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +76,51 @@ def set_codebase_path(payload: TargetCodebasePathUpdate, db: Session = Depends(g
 
     row = app_setting_repo.set(db, TARGET_CODEBASE_PATH_KEY, path)
     return AppSettingResponse(key=row.key, value=row.value, updated_at=row.updated_at)
+
+
+@router.get("/ai-provider", response_model=AiProviderSettingsResponse)
+def get_ai_provider_settings(db: Session = Depends(get_db)):
+    """
+    Returns the currently configured AI provider (Claude / Gemini / local
+    Ollama) used by RCA's "Ask AI" feature, plus whether each cloud
+    provider's API key is actually set (never the key values themselves).
+    """
+    config = get_provider_config(db)
+    return AiProviderSettingsResponse(
+        provider=config["provider"],
+        ollama_base_url=config["ollama_base_url"],
+        ollama_model=config["ollama_model"],
+        claude_configured=bool(app_settings.CLAUDE_API_KEY),
+        gemini_configured=bool(app_settings.GEMINI_API_KEY),
+    )
+
+
+@router.put("/ai-provider", response_model=AiProviderSettingsResponse)
+def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = Depends(get_db)):
+    """
+    Switches which AI provider RCA's "Ask AI" feature uses, and/or updates
+    the local Ollama connection details. Provider choice and Ollama endpoint
+    are non-secret, so they're stored directly (API keys stay in .env, same
+    as elsewhere in this app).
+    """
+    provider = payload.provider.strip().lower()
+    if provider not in VALID_PROVIDERS:
+        raise HTTPException(status_code=400, detail=f"Provider must be one of: {', '.join(sorted(VALID_PROVIDERS))}")
+
+    app_setting_repo.set(db, AI_PROVIDER_KEY, provider)
+    if payload.ollama_base_url is not None:
+        app_setting_repo.set(db, OLLAMA_BASE_URL_KEY, payload.ollama_base_url.strip())
+    if payload.ollama_model is not None:
+        app_setting_repo.set(db, OLLAMA_MODEL_KEY, payload.ollama_model.strip())
+
+    config = get_provider_config(db)
+    return AiProviderSettingsResponse(
+        provider=config["provider"],
+        ollama_base_url=config["ollama_base_url"],
+        ollama_model=config["ollama_model"],
+        claude_configured=bool(app_settings.CLAUDE_API_KEY),
+        gemini_configured=bool(app_settings.GEMINI_API_KEY),
+    )
 
 
 @router.post("/database/reset")

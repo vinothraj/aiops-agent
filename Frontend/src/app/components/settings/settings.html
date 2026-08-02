@@ -24,7 +24,7 @@
     </div>
     <p class="text-secondary small mb-3">
       Local path to the application codebase (e.g. your Broadleaf/ecommerce checkout) that RCA's
-      <strong class="text-white">Diagnose in Codebase</strong> and <strong class="text-white">Ask Claude</strong> features
+      <strong class="text-white">Diagnose in Codebase</strong> and <strong class="text-white">Ask AI</strong> features
       search against. Read-only — this path is only ever scanned/read, never written to.
     </p>
 
@@ -45,7 +45,65 @@
       </div>
     </div>
     <div class="small mt-2" [ngClass]="codebasePathSaved ? 'text-success' : 'text-secondary fst-italic'" id="codebase-path-status">
-      {{ codebasePathSaved ? ('Currently configured: ' + codebasePathSaved) : 'Not configured yet — Diagnose in Codebase and Ask Claude will be unavailable until set.' }}
+      {{ codebasePathSaved ? ('Currently configured: ' + codebasePathSaved) : 'Not configured yet — Diagnose in Codebase and Ask AI will be unavailable until set.' }}
+    </div>
+  </div>
+
+  <!-- AI Provider -->
+  <div class="glass-panel p-4 mb-4" id="ai-provider-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <mat-icon class="text-primary">smart_toy</mat-icon>
+      <h5 class="text-white m-0">AI Provider</h5>
+    </div>
+    <p class="text-secondary small mb-3">
+      Which AI model RCA's <strong class="text-white">Ask AI</strong> feature uses to suggest a fix. API keys for
+      Claude/Gemini stay in the backend <code class="text-info">.env</code> file — this only controls which one is used
+      and, for a local model, where to find it.
+    </p>
+
+    <div class="row g-2 align-items-end mb-2" id="ai-provider-form">
+      <div class="col-12 col-md-4">
+        <label for="ai-provider-select" class="form-label text-secondary fw-semibold small">Provider</label>
+        <select id="ai-provider-select" class="form-select bg-dark text-white border-secondary border-opacity-25" [(ngModel)]="selectedProvider">
+          <option value="claude">Claude (cloud)</option>
+          <option value="gemini">Gemini (cloud)</option>
+          <option value="ollama">Local Llama via Ollama</option>
+        </select>
+      </div>
+
+      <ng-container *ngIf="selectedProvider === 'ollama'">
+        <div class="col-12 col-md-4">
+          <label for="ollama-base-url-input" class="form-label text-secondary fw-semibold small">Ollama Base URL</label>
+          <input type="text" id="ollama-base-url-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+                 placeholder="http://localhost:11434" [(ngModel)]="ollamaBaseUrl">
+        </div>
+        <div class="col-12 col-md-4">
+          <label for="ollama-model-input" class="form-label text-secondary fw-semibold small">Model Name</label>
+          <input type="text" id="ollama-model-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+                 placeholder="llama3.1:8b" [(ngModel)]="ollamaModel">
+        </div>
+      </ng-container>
+
+      <div class="col-12" [ngClass]="selectedProvider === 'ollama' ? 'col-md-12' : 'col-md-4'">
+        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
+                style="background: var(--accent-gradient);" [disabled]="aiProviderSaving || aiProviderLoading" (click)="saveAiProvider()" id="btn-save-ai-provider">
+          <mat-icon *ngIf="!aiProviderSaving">save</mat-icon>
+          <mat-spinner *ngIf="aiProviderSaving" diameter="18"></mat-spinner>
+          Save
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="aiProvider" class="small text-secondary" id="ai-provider-status">
+      <span *ngIf="selectedProvider === 'claude'">
+        Claude API key: <span [ngClass]="aiProvider.claude_configured ? 'text-success' : 'text-warning'">{{ aiProvider.claude_configured ? 'configured' : 'not set in .env' }}</span>
+      </span>
+      <span *ngIf="selectedProvider === 'gemini'">
+        Gemini API key: <span [ngClass]="aiProvider.gemini_configured ? 'text-success' : 'text-warning'">{{ aiProvider.gemini_configured ? 'configured' : 'not set in .env' }}</span>
+      </span>
+      <span *ngIf="selectedProvider === 'ollama'">
+        Make sure Ollama is running locally (<code class="text-info">ollama serve</code>) with the model pulled (<code class="text-info">ollama pull {{ ollamaModel || 'llama3.1:8b' }}</code>).
+      </span>
     </div>
   </div>
 

@@ -95,6 +95,18 @@ class AppSettingResponse(BaseModel):
 class TargetCodebasePathUpdate(BaseModel):
     path: str
 
+class AiProviderSettingsResponse(BaseModel):
+    provider: str
+    ollama_base_url: str
+    ollama_model: str
+    claude_configured: bool = False
+    gemini_configured: bool = False
+
+class AiProviderSettingsUpdate(BaseModel):
+    provider: str
+    ollama_base_url: Optional[str] = None
+    ollama_model: Optional[str] = None
+
 class LogSummaryResponse(BaseModel):
     """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""
     total_matched: int
@@ -349,11 +361,12 @@ class DiagnoseCodebaseResponse(BaseModel):
     candidates: List[CodebaseCandidateFile] = []
     truncated: bool = False
 
-class AskClaudeRequest(BaseModel):
+class AskAiRequest(BaseModel):
     candidate_file_paths: Optional[List[str]] = None
 
-class AskClaudeResponse(BaseModel):
+class AskAiResponse(BaseModel):
     log_id: int
+    provider: str
     model: str
     suggestion: str
     files_used: List[str] = []

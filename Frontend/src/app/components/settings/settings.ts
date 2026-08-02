@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../services/api.service';
+import { ApiService, AiProviderSettingsResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -28,11 +28,19 @@ export class SettingsComponent implements OnInit {
   statsLoading = false;
   totalRows = 0;
 
-  // Target codebase path (used by RCA's Diagnose in Codebase / Ask Claude)
+  // Target codebase path (used by RCA's Diagnose in Codebase / Ask AI)
   codebasePath = '';
   codebasePathSaved = '';
   codebasePathLoading = false;
   codebasePathSaving = false;
+
+  // AI provider (Claude / Gemini / local Ollama) used by RCA's "Ask AI"
+  aiProvider: AiProviderSettingsResponse | null = null;
+  selectedProvider: 'claude' | 'gemini' | 'ollama' = 'claude';
+  ollamaBaseUrl = '';
+  ollamaModel = '';
+  aiProviderLoading = false;
+  aiProviderSaving = false;
 
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
   confirmStep = 0;
@@ -47,6 +55,43 @@ export class SettingsComponent implements OnInit {
   ngOnInit() {
     this.loadStats();
     this.loadCodebasePath();
+    this.loadAiProvider();
+  }
+
+  loadAiProvider() {
+    this.aiProviderLoading = true;
+    this.apiService.getAiProviderSettings().subscribe({
+      next: (data) => {
+        this.aiProvider = data;
+        this.selectedProvider = data.provider;
+        this.ollamaBaseUrl = data.ollama_base_url;
+        this.ollamaModel = data.ollama_model;
+        this.aiProviderLoading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching AI provider settings', err);
+        this.aiProviderLoading = false;
+      }
+    });
+  }
+
+  saveAiProvider() {
+    this.aiProviderSaving = true;
+    this.apiService.setAiProviderSettings({
+      provider: this.selectedProvider,
+      ollama_base_url: this.ollamaBaseUrl.trim(),
+      ollama_model: this.ollamaModel.trim()
+    }).subscribe({
+      next: (data) => {
+        this.aiProvider = data;
+        this.aiProviderSaving = false;
+        this.showMessage(`AI provider set to ${data.provider}.`, 'success');
+      },
+      error: (err) => {
+        this.aiProviderSaving = false;
+        this.showMessage(`Failed to save AI provider: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
   }
 
   loadCodebasePath() {
