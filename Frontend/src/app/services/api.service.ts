@@ -121,6 +121,8 @@ export interface LogAnalysisResponse {
   incident_group_id?: number;
   is_recurring: boolean;
   match_score?: number;
+  ai_provider?: string;
+  ai_model?: string;
 }
 
 export interface IncidentGroupResponse {
@@ -174,6 +176,7 @@ export interface AiProviderSettingsResponse {
   ollama_model: string;
   claude_configured: boolean;
   gemini_configured: boolean;
+  auto_rca_enabled: boolean;
 }
 
 @Injectable({
@@ -248,8 +251,8 @@ export class ApiService {
     return this.http.post<any>(`${this.baseUrl}/logs/reprocess`, body);
   }
 
-  triggerRcaAnalysis(logId: number): Observable<LogAnalysisResponse> {
-    return this.http.post<LogAnalysisResponse>(`${this.baseUrl}/rca/analyze/${logId}`, {});
+  triggerRcaAnalysis(logId: number, forceNew = false): Observable<LogAnalysisResponse> {
+    return this.http.post<LogAnalysisResponse>(`${this.baseUrl}/rca/analyze/${logId}`, { force_new: forceNew });
   }
 
   getRcaAnalysis(logId: number): Observable<LogAnalysisResponse> {
@@ -383,7 +386,7 @@ export class ApiService {
     return this.http.get<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`);
   }
 
-  setAiProviderSettings(payload: { provider: string; ollama_base_url?: string; ollama_model?: string }): Observable<AiProviderSettingsResponse> {
+  setAiProviderSettings(payload: { provider: string; ollama_base_url?: string; ollama_model?: string; auto_rca_enabled?: boolean }): Observable<AiProviderSettingsResponse> {
     return this.http.put<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`, payload);
   }
 

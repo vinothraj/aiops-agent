@@ -6,16 +6,18 @@ This module implements an AI SRE (Site Reliability Engineer) agent that analyzes
 production failures, identifies probable root causes, assesses business and technical
 impact, detects patterns, and suggests remediation actions.
 
-The agent uses Google Gemini to perform intelligent analysis of log context windows
-(surrounding logs before/after a failure) and produces structured JSON output.
+The agent calls whichever AI provider is currently configured (Claude, Gemini, or a
+local Ollama model -- see app.services.rca.ai_providers) to perform intelligent
+analysis of log context windows (surrounding logs before/after a failure) and
+produces structured JSON output.
 """
 
 import json
+import re
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
-import google.generativeai as genai
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -25,8 +27,17 @@ from app.schemas.schemas import RCAStructuredResponse, RCARequest
 from app.services.rag.rag_service import rag_service
 from app.services.triage.triage_engine import triage_engine
 from app.services.rca import incident_matcher
+from app.services.rca.ai_providers import get_ai_suggestion, AiProviderError
 
 logger = logging.getLogger(__name__)
+
+
+class LogNotFoundError(Exception):
+    """Raised when analyze() is given a log_id that doesn't exist -- kept
+    distinct from ValueError so it can't be confused with an unrelated
+    ValueError bubbling up from deep inside a provider SDK."""
+    pass
+
 
 # ─── Root Cause Categories ────────────────────────────────────────────────────
 
@@ -117,36 +128,15 @@ If historical incidents or runbooks are provided, you MUST explicitly consider t
 
 class RootCauseAnalysisAgent:
     """
-    Enterprise-grade Root Cause Analysis Agent powered by Google Gemini.
+    Enterprise-grade Root Cause Analysis Agent, powered by whichever AI
+    provider is currently configured (Claude / Gemini / local Ollama).
 
     Responsibilities:
     - Gather context around a failing log (previous + subsequent logs)
     - Build a rich prompt with service metadata
-    - Call Gemini for structured analysis
+    - Call the configured AI provider for structured analysis
     - Persist results to the database for future RAG and trend analysis
     """
-
-    def __init__(self):
-        self._model = None
-
-    def _get_model(self):
-        """Lazy-initialize the Gemini model."""
-        if self._model is None:
-            if not settings.GEMINI_API_KEY:
-                raise ValueError(
-                    "GEMINI_API_KEY is not configured. "
-                    "Please set it in your Backend/.env file."
-                )
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            self._model = genai.GenerativeModel(
-                model_name=settings.GEMINI_MODEL,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.2,
-                    max_output_tokens=4096,
-                ),
-                system_instruction=SYSTEM_PROMPT,
-            )
-        return self._model
 
     # ─── Context Gathering ─────────────────────────────────────────────────
 
@@ -255,17 +245,30 @@ class RootCauseAnalysisAgent:
 
         return "\n".join(sections)
 
-    # ─── Gemini API Call ───────────────────────────────────────────────────
+    # ─── AI Provider Call ───────────────────────────────────────────────────
 
-    def _call_gemini(self, prompt: str) -> RCAStructuredResponse:
-        """Send the prompt to Gemini and parse the structured response."""
-        model = self._get_model()
+    _JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
 
-        logger.info("Sending RCA analysis request to Gemini...")
-        response = model.generate_content(prompt)
+    def _call_ai(self, db: Session, prompt: str) -> Tuple[RCAStructuredResponse, str, str]:
+        """
+        Send the prompt to whichever AI provider is configured and parse the
+        structured response. AiProviderError propagates as-is (not wrapped as
+        ValueError, which the endpoint layer maps to 404 "log not found" --
+        a provider failure is a distinct, differently-coded error case).
+        """
+        logger.info("Sending RCA analysis request to the configured AI provider...")
+        provider, model, raw_text = get_ai_suggestion(db, prompt, system_prompt=SYSTEM_PROMPT)
 
-        # Extract the text response
-        raw_text = response.text.strip()
+        logger.info(f"Response received from {provider}/{model}, parsing JSON...")
+        return self._parse_rca_response(raw_text), provider, model
+
+    def _parse_rca_response(self, raw_text: str) -> RCAStructuredResponse:
+        """
+        Parses the AI's JSON response into a structured result, tolerating the
+        extra prose/commentary that less-compliant (esp. smaller local) models
+        sometimes wrap around the JSON despite instructions not to.
+        """
+        raw_text = raw_text.strip()
 
         # Clean up potential markdown fences
         if raw_text.startswith("```json"):
@@ -276,31 +279,40 @@ class RootCauseAnalysisAgent:
             raw_text = raw_text[:-3]
         raw_text = raw_text.strip()
 
-        logger.info("Gemini response received, parsing JSON...")
-
         try:
             parsed = json.loads(raw_text)
             return RCAStructuredResponse(**parsed)
-        except (json.JSONDecodeError, Exception) as e:
-            logger.error(f"Failed to parse Gemini response: {e}")
-            logger.error(f"Raw response: {raw_text[:500]}")
-            # Return a fallback response
-            return RCAStructuredResponse(
-                incident_type="PARSE_ERROR",
-                root_cause_category="UNKNOWN",
-                root_cause=f"Failed to parse AI response: {str(e)}",
-                severity="P4",
-                summary=f"The AI agent returned a non-parseable response. Raw excerpt: {raw_text[:300]}",
-                confidence_score=0.0,
-                severity_confidence=0.0,
-                recommendation_confidence=0.0,
-                incident_recommendation="REQUIRES_HUMAN_REVIEW",
-            )
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # Fallback: extract the first {...} block in case the model added
+        # surrounding commentary despite being told to respond with JSON only.
+        match = self._JSON_OBJECT_RE.search(raw_text)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                return RCAStructuredResponse(**parsed)
+            except (json.JSONDecodeError, Exception) as e:
+                logger.error(f"Failed to parse extracted JSON block: {e}")
+
+        logger.error(f"Failed to parse AI response as JSON. Raw response: {raw_text[:500]}")
+        return RCAStructuredResponse(
+            incident_type="PARSE_ERROR",
+            root_cause_category="UNKNOWN",
+            root_cause="Failed to parse the AI response as valid JSON.",
+            severity="P4",
+            summary=f"The AI agent returned a non-parseable response. Raw excerpt: {raw_text[:300]}",
+            confidence_score=0.0,
+            severity_confidence=0.0,
+            recommendation_confidence=0.0,
+            incident_recommendation="REQUIRES_HUMAN_REVIEW",
+        )
 
     # ─── Database Persistence ──────────────────────────────────────────────
 
     def _persist_analysis(
-        self, db: Session, log_id: int, target_log: Log, rca: RCAStructuredResponse
+        self, db: Session, log_id: int, target_log: Log, rca: RCAStructuredResponse,
+        ai_provider: Optional[str] = None, ai_model: Optional[str] = None
     ) -> LogAnalysis:
         """Save the analysis results and related entities to the database."""
 
@@ -324,6 +336,8 @@ class RootCauseAnalysisAgent:
             confidence_score=rca.confidence_score,
             recommendation=recommendation_text,
             summary=rca.summary,
+            ai_provider=ai_provider,
+            ai_model=ai_model,
         )
         db.add(analysis)
         db.flush()  # Get the ID before adding related records
@@ -404,6 +418,24 @@ class RootCauseAnalysisAgent:
         logger.info(f"Created new incident group {group.id} (fingerprint={fingerprint[:12]}...)")
         return group
 
+    def _attach_to_existing_group(
+        self, db: Session, analysis: LogAnalysis, group: IncidentGroup
+    ) -> None:
+        """
+        Used when force-regenerating a fresh analysis for a log whose error
+        signature already matches a known group: keeps the new (possibly
+        different-provider) result linked to the existing group instead of
+        spawning a duplicate group for the same underlying issue.
+        """
+        analysis.incident_group_id = group.id
+        analysis.is_recurring = True
+        group.occurrence_count += 1
+        group.last_seen_at = datetime.utcnow()
+        db.commit()
+        db.refresh(analysis)
+        db.refresh(group)
+        logger.info(f"Attached regenerated analysis {analysis.id} to existing group {group.id}")
+
     def _reuse_known_solution(
         self, db: Session, log_id: int, target_log: Log, match: "incident_matcher.MatchResult"
     ) -> Dict[str, Any]:
@@ -428,6 +460,8 @@ class RootCauseAnalysisAgent:
             incident_group_id=group.id,
             is_recurring=True,
             match_score=match.score,
+            ai_provider=representative.ai_provider,
+            ai_model=representative.ai_model,
         )
         db.add(analysis)
         db.flush()
@@ -476,6 +510,7 @@ class RootCauseAnalysisAgent:
         db: Session,
         log_id: int,
         metadata: Optional[RCARequest] = None,
+        force_new: bool = False,
     ) -> Dict[str, Any]:
         """
         Main entry point: run a full root cause analysis on a log entry.
@@ -484,6 +519,10 @@ class RootCauseAnalysisAgent:
             db: Database session
             log_id: The ID of the error/fatal log to analyze
             metadata: Optional service metadata (environment, version, deployment time)
+            force_new: Bypass the known-issue reuse shortcut and always call the
+                configured AI provider fresh -- used to regenerate a suggestion
+                (e.g. after switching AI provider in Settings) instead of getting
+                back the same cached answer.
 
         Returns:
             Dict with the analysis record and the full structured RCA response
@@ -491,17 +530,18 @@ class RootCauseAnalysisAgent:
         # 1. Fetch the target log
         target_log = db.scalar(select(Log).where(Log.id == log_id))
         if not target_log:
-            raise ValueError(f"Log entry with id={log_id} not found.")
+            raise LogNotFoundError(f"Log entry with id={log_id} not found.")
 
         logger.info(
             f"Starting RCA analysis for log_id={log_id}, "
-            f"service={target_log.service_name}, level={target_log.log_level}"
+            f"service={target_log.service_name}, level={target_log.log_level}, force_new={force_new}"
         )
 
         # 2. Known-issue check: is this a confirmed recurrence of an already-analyzed
-        #    incident? If so, reuse its solution instead of spending Gemini tokens on it.
+        #    incident? If so (and not force_new), reuse its solution instead of
+        #    spending AI tokens re-deriving it.
         match = incident_matcher.find_matching_group(db, target_log)
-        if match:
+        if match and not force_new:
             result = self._reuse_known_solution(db, log_id, target_log, match)
             analysis, rca_response = result["analysis"], result["rca_detail"]
         else:
@@ -516,12 +556,18 @@ class RootCauseAnalysisAgent:
             request_metadata = metadata or RCARequest(service_name=target_log.service_name)
             prompt = self._build_prompt(target_log, context, request_metadata)
 
-            # 2c. Call Gemini
-            rca_response = self._call_gemini(prompt)
+            # 2c. Call whichever AI provider is currently configured
+            rca_response, provider, model = self._call_ai(db, prompt)
 
-            # 2d. Persist to database and start tracking it as a new incident group
-            analysis = self._persist_analysis(db, log_id, target_log, rca_response)
-            self._create_new_group(db, target_log, analysis)
+            # 2d. Persist to database, tagging which provider/model produced it
+            analysis = self._persist_analysis(db, log_id, target_log, rca_response, ai_provider=provider, ai_model=model)
+
+            # 2e. Group tracking: attach to the existing group if this is a
+            #     regenerate of an already-known signature, otherwise start a new one.
+            if match:
+                self._attach_to_existing_group(db, analysis, match.group)
+            else:
+                self._create_new_group(db, target_log, analysis)
 
         # 6. Auto-triage: chain into the Incident Decision Engine
         triage_decision = None

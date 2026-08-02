@@ -101,11 +101,13 @@ class AiProviderSettingsResponse(BaseModel):
     ollama_model: str
     claude_configured: bool = False
     gemini_configured: bool = False
+    auto_rca_enabled: bool = False
 
 class AiProviderSettingsUpdate(BaseModel):
     provider: str
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
+    auto_rca_enabled: Optional[bool] = None
 
 class LogSummaryResponse(BaseModel):
     """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""
@@ -125,6 +127,7 @@ class RCARequest(BaseModel):
     environment: Optional[str] = "production"
     version: Optional[str] = None
     deployment_timestamp: Optional[datetime] = None
+    force_new: bool = False
 
 class RCAStructuredResponse(BaseModel):
     """Structured JSON output expected from the Gemini RCA agent."""
@@ -186,6 +189,8 @@ class LogAnalysisResponse(BaseModel):
     incident_group_id: Optional[int] = None
     is_recurring: bool = False
     match_score: Optional[float] = None
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
 
     class Config:
         from_attributes = True

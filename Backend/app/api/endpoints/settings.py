@@ -15,6 +15,7 @@ from app.services.rca.ai_providers import (
     AI_PROVIDER_KEY,
     OLLAMA_BASE_URL_KEY,
     OLLAMA_MODEL_KEY,
+    AUTO_RCA_ENABLED_KEY,
     VALID_PROVIDERS,
 )
 
@@ -92,6 +93,7 @@ def get_ai_provider_settings(db: Session = Depends(get_db)):
         ollama_model=config["ollama_model"],
         claude_configured=bool(app_settings.CLAUDE_API_KEY),
         gemini_configured=bool(app_settings.GEMINI_API_KEY),
+        auto_rca_enabled=config["auto_rca_enabled"],
     )
 
 
@@ -99,9 +101,12 @@ def get_ai_provider_settings(db: Session = Depends(get_db)):
 def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = Depends(get_db)):
     """
     Switches which AI provider RCA's "Ask AI" feature uses, and/or updates
-    the local Ollama connection details. Provider choice and Ollama endpoint
-    are non-secret, so they're stored directly (API keys stay in .env, same
-    as elsewhere in this app).
+    the local Ollama connection details, and/or toggles automatic RCA on
+    newly-ingested ERROR logs. Provider choice, Ollama endpoint, and the
+    auto-RCA flag are all non-secret, so they're stored directly (API keys
+    stay in .env, same as elsewhere in this app). Note: auto-RCA only ever
+    actually runs when the provider is Ollama, regardless of this flag --
+    see auto_trigger.py.
     """
     provider = payload.provider.strip().lower()
     if provider not in VALID_PROVIDERS:
@@ -112,6 +117,8 @@ def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = De
         app_setting_repo.set(db, OLLAMA_BASE_URL_KEY, payload.ollama_base_url.strip())
     if payload.ollama_model is not None:
         app_setting_repo.set(db, OLLAMA_MODEL_KEY, payload.ollama_model.strip())
+    if payload.auto_rca_enabled is not None:
+        app_setting_repo.set(db, AUTO_RCA_ENABLED_KEY, "true" if payload.auto_rca_enabled else "false")
 
     config = get_provider_config(db)
     return AiProviderSettingsResponse(
@@ -120,6 +127,7 @@ def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = De
         ollama_model=config["ollama_model"],
         claude_configured=bool(app_settings.CLAUDE_API_KEY),
         gemini_configured=bool(app_settings.GEMINI_API_KEY),
+        auto_rca_enabled=config["auto_rca_enabled"],
     )
 
 

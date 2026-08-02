@@ -100,10 +100,7 @@
   </div>
 
   <!-- Notification Banner -->
-  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="{
-    'alert-success bg-success bg-opacity-20 text-success border-success border-opacity-30': messageType === 'success',
-    'alert-danger bg-danger bg-opacity-20 text-danger border-danger border-opacity-30': messageType === 'danger'
-  }" role="alert" id="sources-message-banner">
+  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="messageType === 'success' ? 'alert-success bg-success bg-opacity-25 text-success border-success border-opacity-25' : 'alert-danger bg-danger bg-opacity-25 text-danger border-danger border-opacity-25'" role="alert" id="sources-message-banner">
     <div class="d-flex align-items-center gap-2">
       <mat-icon>{{ messageType === 'success' ? 'check_circle' : 'error' }}</mat-icon>
       <span>{{ message }}</span>

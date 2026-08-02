@@ -15,6 +15,7 @@ from app.database.session import get_db, engine
 from app.repositories.repositories import log_repo, log_file_repo
 from app.schemas.schemas import LogResponse, LogReprocessRequest, LogSummaryResponse
 from app.services.watcher import log_watcher_service, parse_source_identity, get_active_root_paths, parser as log_parser
+from app.services.rca import auto_trigger
 from app.models.models import Log
 import os
 
@@ -270,7 +271,9 @@ def _reprocess_single_file(db: Session, db_file) -> tuple[bool, str]:
     # we touch existing data for it.
     log_repo.delete_by_path(db, file_path)
     if parsed_logs:
-        log_repo.create_many(db, parsed_logs)
+        created = log_repo.create_many(db, parsed_logs)
+        for original, db_obj in zip(parsed_logs, created):
+            auto_trigger.maybe_schedule_auto_rca(db_obj.id, original.log_level)
 
     db_file.last_processed_position = len(content_bytes)
     db_file.last_processed_time = datetime.utcnow()

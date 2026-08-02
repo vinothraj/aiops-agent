@@ -6,10 +6,7 @@
   </div>
 
   <!-- Notification Banner -->
-  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="{
-    'alert-success bg-success bg-opacity-20 text-success border-success border-opacity-30': messageType === 'success',
-    'alert-danger bg-danger bg-opacity-20 text-danger border-danger border-opacity-30': messageType === 'danger'
-  }" role="alert" id="settings-message-banner">
+  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="messageType === 'success' ? 'alert-success bg-success bg-opacity-25 text-success border-success border-opacity-25' : 'alert-danger bg-danger bg-opacity-25 text-danger border-danger border-opacity-25'" role="alert" id="settings-message-banner">
     <div class="d-flex align-items-center gap-2">
       <mat-icon>{{ messageType === 'success' ? 'check_circle' : 'error' }}</mat-icon>
       <span>{{ message }}</span>
@@ -94,7 +91,7 @@
       </div>
     </div>
 
-    <div *ngIf="aiProvider" class="small text-secondary" id="ai-provider-status">
+    <div *ngIf="aiProvider" class="small text-secondary mb-3" id="ai-provider-status">
       <span *ngIf="selectedProvider === 'claude'">
         Claude API key: <span [ngClass]="aiProvider.claude_configured ? 'text-success' : 'text-warning'">{{ aiProvider.claude_configured ? 'configured' : 'not set in .env' }}</span>
       </span>
@@ -104,6 +101,25 @@
       <span *ngIf="selectedProvider === 'ollama'">
         Make sure Ollama is running locally (<code class="text-info">ollama serve</code>) with the model pulled (<code class="text-info">ollama pull {{ ollamaModel || 'llama3.1:8b' }}</code>).
       </span>
+    </div>
+
+    <div class="border-top border-secondary border-opacity-10 pt-3" id="auto-rca-section">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="auto-rca-toggle"
+               [checked]="autoRcaEnabled" [disabled]="aiProviderSaving" (change)="onToggleAutoRca($event)">
+        <label class="form-check-label text-white small fw-semibold" for="auto-rca-toggle">
+          Automatically analyze every new ERROR log
+        </label>
+      </div>
+      <p class="text-secondary small mt-1 mb-0">
+        Off by default. Applies to ERROR-level logs only (never DEBUG/INFO/WARN). Even when enabled, this only
+        actually runs while Provider above is <strong class="text-white">Local Llama via Ollama</strong> — it stays
+        paused on Claude/Gemini to avoid spending API tokens automatically.
+        <span *ngIf="autoRcaEnabled && selectedProvider !== 'ollama'" class="text-warning d-block mt-1">
+          <mat-icon style="font-size: 1rem; width: auto; height: auto; vertical-align: text-top;">info</mat-icon>
+          Enabled, but currently paused — switch Provider to Ollama to activate it.
+        </span>
+      </p>
     </div>
   </div>
 

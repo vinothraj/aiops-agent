@@ -24,11 +24,11 @@
   </div>
 
   <!-- Messages Feedback -->
-  <div *ngIf="successMessage" class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-20 text-success d-flex align-items-center gap-2 mb-4">
+  <div *ngIf="successMessage" class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 text-success d-flex align-items-center gap-2 mb-4">
     <mat-icon>check_circle</mat-icon>
     <span>{{ successMessage }}</span>
   </div>
-  <div *ngIf="errorMessage" class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-20 text-danger d-flex align-items-center gap-2 mb-4">
+  <div *ngIf="errorMessage" class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger d-flex align-items-center gap-2 mb-4">
     <mat-icon>error</mat-icon>
     <span>{{ errorMessage }}</span>
   </div>
@@ -114,7 +114,7 @@
 
         <div *ngIf="!loadingRecipients && recipients.length > 0" class="row g-3">
           <div class="col-12" *ngFor="let recipient of recipients">
-            <div class="bg-black bg-opacity-30 p-3 rounded border border-secondary border-opacity-20 d-flex flex-wrap justify-content-between align-items-center gap-3 hover-card">
+            <div class="bg-black bg-opacity-25 p-3 rounded border border-secondary border-opacity-25 d-flex flex-wrap justify-content-between align-items-center gap-3 hover-card">
               <div class="d-flex align-items-center gap-3">
                 <div class="rounded-circle p-2.5 d-flex align-items-center justify-content-center" 
                      [style.background-color]="recipient.channel === 'teams' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(14, 165, 233, 0.15)'"
@@ -178,7 +178,7 @@
     <div *ngIf="!loadingHistory && history.length > 0" class="table-responsive">
       <table class="table text-secondary align-middle">
         <thead>
-          <tr class="border-bottom border-secondary border-opacity-20">
+          <tr class="border-bottom border-secondary border-opacity-25">
             <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Channel</th>
             <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Destination</th>
             <th class="text-white py-3 fw-bold" style="font-family: var(--font-title);">Notification Message</th>
@@ -251,7 +251,7 @@
           Queries Gemini model to aggregate and synthesize all logged operational activities, alert failures, GitLab activities, and RCA results over the past 24 hours.
         </p>
 
-        <div class="bg-black bg-opacity-40 p-4 rounded border border-secondary border-opacity-25 flex-grow-1 overflow-auto font-mono text-white text-pre" style="min-height: 380px; max-height: 500px; white-space: pre-wrap;">
+        <div class="bg-black bg-opacity-50 p-4 rounded border border-secondary border-opacity-25 flex-grow-1 overflow-auto font-mono text-white text-pre" style="min-height: 380px; max-height: 500px; white-space: pre-wrap;">
           <div *ngIf="loadingDigest" class="d-flex flex-column justify-content-center align-items-center h-100">
             <mat-spinner diameter="30"></mat-spinner>
             <p class="text-secondary mt-3 small">Gemini is synthesizing operational logs and events...</p>
@@ -287,7 +287,7 @@
           Collects systems metrics, high severity incidents, and resolved tasks over the last 7 days to compile a high-level site reliability insights report.
         </p>
 
-        <div class="bg-black bg-opacity-40 p-4 rounded border border-secondary border-opacity-25 flex-grow-1 overflow-auto font-mono text-white text-pre" style="min-height: 380px; max-height: 500px; white-space: pre-wrap;">
+        <div class="bg-black bg-opacity-50 p-4 rounded border border-secondary border-opacity-25 flex-grow-1 overflow-auto font-mono text-white text-pre" style="min-height: 380px; max-height: 500px; white-space: pre-wrap;">
           <div *ngIf="loadingInsights" class="d-flex flex-column justify-content-center align-items-center h-100">
             <mat-spinner diameter="30"></mat-spinner>
             <p class="text-secondary mt-3 small">Compiling reliability patterns and trend lines...</p>

@@ -41,6 +41,7 @@ export class SettingsComponent implements OnInit {
   ollamaModel = '';
   aiProviderLoading = false;
   aiProviderSaving = false;
+  autoRcaEnabled = false;
 
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
   confirmStep = 0;
@@ -66,6 +67,7 @@ export class SettingsComponent implements OnInit {
         this.selectedProvider = data.provider;
         this.ollamaBaseUrl = data.ollama_base_url;
         this.ollamaModel = data.ollama_model;
+        this.autoRcaEnabled = data.auto_rca_enabled;
         this.aiProviderLoading = false;
       },
       error: (err) => {
@@ -80,7 +82,8 @@ export class SettingsComponent implements OnInit {
     this.apiService.setAiProviderSettings({
       provider: this.selectedProvider,
       ollama_base_url: this.ollamaBaseUrl.trim(),
-      ollama_model: this.ollamaModel.trim()
+      ollama_model: this.ollamaModel.trim(),
+      auto_rca_enabled: this.autoRcaEnabled
     }).subscribe({
       next: (data) => {
         this.aiProvider = data;
@@ -92,6 +95,27 @@ export class SettingsComponent implements OnInit {
         this.showMessage(`Failed to save AI provider: ${err.error?.detail || err.message}`, 'danger');
       }
     });
+  }
+
+  onToggleAutoRca(event: Event) {
+    const checkbox = event.target as HTMLInputElement;
+    const wantsEnabled = checkbox.checked;
+
+    if (wantsEnabled) {
+      const confirmed = window.confirm(
+        'Enabling automatic root cause analysis will analyze every new ERROR log automatically as it arrives -- no button click needed.\n\n' +
+        'This only actually runs while AI Provider is set to "Local Llama via Ollama" (free, no tokens). ' +
+        'If you switch to Claude or Gemini, auto-analysis stays paused even with this enabled, since those cost real API tokens per call.\n\n' +
+        'Enable automatic analysis?'
+      );
+      if (!confirmed) {
+        checkbox.checked = false;
+        return;
+      }
+    }
+
+    this.autoRcaEnabled = wantsEnabled;
+    this.saveAiProvider();
   }
 
   loadCodebasePath() {

@@ -127,7 +127,7 @@
 
         <!-- Expanded Rationale -->
         <div *ngIf="expandedId === incident.id" class="rationale-section p-3 pt-0" (click)="$event.stopPropagation()">
-          <div class="bg-black bg-opacity-40 p-3 rounded border border-secondary border-opacity-25">
+          <div class="bg-black bg-opacity-50 p-3 rounded border border-secondary border-opacity-25">
             <div class="d-flex align-items-center gap-2 mb-2">
               <mat-icon style="font-size: 1.1rem; width: auto; height: auto; color: #a78bfa;">auto_awesome</mat-icon>
               <span class="small fw-semibold text-uppercase" style="color: #a78bfa;">AI Decision Rationale</span>
@@ -181,7 +181,7 @@
                   <div class="timeline-meta">
                     <span class="timeline-title d-flex align-items-center gap-2">
                       {{ event.title }}
-                      <span *ngIf="event.status" class="badge bg-secondary bg-opacity-20 text-white font-mono" style="font-size: 0.65rem;">
+                      <span *ngIf="event.status" class="badge bg-secondary bg-opacity-25 text-white font-mono" style="font-size: 0.65rem;">
                         {{ event.status }}
                       </span>
                     </span>

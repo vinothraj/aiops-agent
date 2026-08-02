@@ -77,6 +77,11 @@ class LogAnalysis(Base):
     is_recurring = Column(Boolean, default=False, nullable=False)
     match_score = Column(Float, nullable=True)  # similarity to the matched group, when is_recurring
 
+    # Which AI provider/model actually produced this analysis (null for older
+    # rows predating multi-provider support)
+    ai_provider = Column(String(50), nullable=True)
+    ai_model = Column(String(100), nullable=True)
+
     # Relationships
     log = relationship("Log", backref="analyses")
     patterns = relationship("AnalysisPattern", back_populates="analysis", cascade="all, delete-orphan")

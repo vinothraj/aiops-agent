@@ -335,10 +335,10 @@ export class LogViewerComponent implements OnInit {
     });
   }
 
-  triggerAnalysis(logId: number) {
+  triggerAnalysis(logId: number, forceNew = false) {
     this.rcaLoading[logId] = true;
     this.rcaError[logId] = '';
-    this.apiService.triggerRcaAnalysis(logId).subscribe({
+    this.apiService.triggerRcaAnalysis(logId, forceNew).subscribe({
       next: (data) => {
         this.rcaData[logId] = data;
         this.rcaLoading[logId] = false;
@@ -346,9 +346,13 @@ export class LogViewerComponent implements OnInit {
       error: (err) => {
         console.error('Failed to trigger RCA:', err);
         this.rcaLoading[logId] = false;
-        this.rcaError[logId] = 'Analysis failed. Make sure Gemini API Key is configured and running properly.';
+        this.rcaError[logId] = err.error?.detail || 'Analysis failed. Check the configured AI provider in Settings.';
       }
     });
+  }
+
+  regenerateAnalysis(logId: number) {
+    this.triggerAnalysis(logId, true);
   }
 
   diagnoseCodebase(logId: number) {

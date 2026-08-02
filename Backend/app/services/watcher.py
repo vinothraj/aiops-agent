@@ -14,6 +14,7 @@ from app.database.session import SessionLocal
 from app.repositories.repositories import log_file_repo, log_repo, monitored_source_root_repo
 from app.schemas.schemas import LogFileCreate, LogFileUpdate
 from app.services.parser import LogParser
+from app.services.rca import auto_trigger
 
 logger = logging.getLogger(__name__)
 parser = LogParser()
@@ -245,7 +246,9 @@ class LogFileProcessor:
                     default_service=service_name, instance_id=instance_id
                 )
                 if parsed_logs:
-                    log_repo.create_many(db, parsed_logs)
+                    created = log_repo.create_many(db, parsed_logs)
+                    for original, db_obj in zip(parsed_logs, created):
+                        auto_trigger.maybe_schedule_auto_rca(db_obj.id, original.log_level)
 
             # 6. Update file info
             log_file_repo.update(

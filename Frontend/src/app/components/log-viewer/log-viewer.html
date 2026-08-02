@@ -78,10 +78,7 @@
   </div>
 
   <!-- Notification Banner -->
-  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="{
-    'alert-success bg-success bg-opacity-20 text-success border-success border-opacity-30': messageType === 'success',
-    'alert-danger bg-danger bg-opacity-20 text-danger border-danger border-opacity-30': messageType === 'danger'
-  }" role="alert" id="log-viewer-message-banner">
+  <div *ngIf="message" class="alert alert-dismissible fade show p-3 mb-4" [ngClass]="messageType === 'success' ? 'alert-success bg-success bg-opacity-25 text-success border-success border-opacity-25' : 'alert-danger bg-danger bg-opacity-25 text-danger border-danger border-opacity-25'" role="alert" id="log-viewer-message-banner">
     <div class="d-flex align-items-center gap-2">
       <mat-icon>{{ messageType === 'success' ? 'check_circle' : 'error' }}</mat-icon>
       <span>{{ message }}</span>
@@ -222,7 +219,7 @@
             </tr>
 
             <!-- Expanded Details Row -->
-            <tr *ngIf="expandedLogId === log.id" class="log-detail-row bg-black bg-opacity-40" [id]="'log-detail-row-' + log.id">
+            <tr *ngIf="expandedLogId === log.id" class="log-detail-row bg-black bg-opacity-50" [id]="'log-detail-row-' + log.id">
               <td colspan="6" class="p-4 text-secondary">
                 <div class="d-flex flex-column gap-3">
                   <!-- Header details -->
@@ -250,7 +247,7 @@
                   <!-- Stack Trace -->
                   <div *ngIf="log.stacktrace">
                     <div class="small text-uppercase fw-semibold mb-1 text-danger">Stack Trace</div>
-                    <pre class="bg-black text-danger p-3 rounded border border-danger border-opacity-20 m-0" style="font-size: 0.85rem; max-height: 300px; overflow-y: auto;">{{ log.stacktrace }}</pre>
+                    <pre class="bg-black text-danger p-3 rounded border border-danger border-opacity-25 m-0" style="font-size: 0.85rem; max-height: 300px; overflow-y: auto;">{{ log.stacktrace }}</pre>
                   </div>
 
                   <!-- RCA Section -->
@@ -262,9 +259,9 @@
                       <div class="fw-semibold text-white">AI Root Cause Analysis</div>
                     </div>
                     
-                    <div *ngIf="rcaLoading[log.id]" class="d-flex align-items-center gap-3 text-secondary small p-4 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10">
+                    <div *ngIf="rcaLoading[log.id]" class="d-flex align-items-center gap-3 text-secondary small p-4 bg-black bg-opacity-25 rounded border border-secondary border-opacity-10">
                       <mat-spinner diameter="20"></mat-spinner> 
-                      <span>Analyzing logs and correlating context with Google Gemini...</span>
+                      <span>Analyzing logs and correlating context with the configured AI provider...</span>
                     </div>
                     
                     <div *ngIf="rcaError[log.id]" class="text-danger small p-3 bg-danger bg-opacity-10 rounded border border-danger border-opacity-25 d-flex align-items-center gap-2">
@@ -272,7 +269,7 @@
                       {{ rcaError[log.id] }}
                     </div>
 
-                    <div *ngIf="!rcaLoading[log.id] && !rcaData[log.id] && !rcaError[log.id]" class="p-4 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10 text-center">
+                    <div *ngIf="!rcaLoading[log.id] && !rcaData[log.id] && !rcaError[log.id]" class="p-4 bg-black bg-opacity-25 rounded border border-secondary border-opacity-10 text-center">
                       <mat-icon class="text-secondary mb-2" style="font-size: 2.5rem; width: auto; height: auto;">auto_awesome</mat-icon>
                       <h6 class="text-white mb-2">No Analysis Found</h6>
                       <p class="text-secondary small mb-3 max-w-lg mx-auto">Trigger an AI-powered root cause analysis to automatically analyze the surrounding context, find the underlying issue, correlate related logs, and get recommended fixes.</p>
@@ -281,10 +278,23 @@
                       </button>
                     </div>
 
-                    <div *ngIf="rcaData[log.id] as rca" class="bg-black bg-opacity-40 p-4 rounded border border-primary border-opacity-25 position-relative overflow-hidden">
+                    <div *ngIf="rcaData[log.id] as rca" class="bg-black bg-opacity-50 p-4 rounded border border-primary border-opacity-25 position-relative overflow-hidden">
                       <!-- Subtle glow effect -->
                       <div class="position-absolute top-0 start-0 w-100 h-100 pointer-events-none" style="background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.05), transparent 50%);"></div>
-                      
+
+                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 position-relative" id="rca-provenance-bar">
+                        <span *ngIf="rca.ai_provider" class="badge bg-secondary bg-opacity-25 text-white fw-normal small">
+                          Analyzed via {{ rca.ai_provider }}<span *ngIf="rca.ai_model"> / {{ rca.ai_model }}</span>
+                        </span>
+                        <span *ngIf="!rca.ai_provider" class="badge bg-secondary bg-opacity-25 text-white fw-normal small">Analyzed via Gemini (legacy)</span>
+                        <button mat-stroked-button color="primary" class="d-flex align-items-center gap-2"
+                                [disabled]="rcaLoading[log.id]" (click)="regenerateAnalysis(log.id)" [id]="'btn-regenerate-rca-' + log.id">
+                          <mat-icon *ngIf="!rcaLoading[log.id]">refresh</mat-icon>
+                          <mat-spinner *ngIf="rcaLoading[log.id]" diameter="18"></mat-spinner>
+                          Regenerate (current AI provider)
+                        </button>
+                      </div>
+
                       <div class="row g-4 position-relative">
                         <!-- Left Column: Details -->
                         <div class="col-12 col-md-8">
@@ -382,10 +392,10 @@
                               {{ diag.candidates.length }} candidate file{{ diag.candidates.length === 1 ? '' : 's' }} found
                               <span *ngIf="diag.truncated" class="text-warning"> (scan truncated — repo may be larger than the scan limit)</span>
                             </div>
-                            <div *ngIf="diag.candidates.length === 0" class="text-secondary small fst-italic p-3 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10">
+                            <div *ngIf="diag.candidates.length === 0" class="text-secondary small fst-italic p-3 bg-black bg-opacity-25 rounded border border-secondary border-opacity-10">
                               No matching files found in the configured codebase for this error's stack trace or affected services.
                             </div>
-                            <div *ngFor="let c of diag.candidates" class="mb-2 p-3 bg-black bg-opacity-30 rounded border border-secondary border-opacity-10">
+                            <div *ngFor="let c of diag.candidates" class="mb-2 p-3 bg-black bg-opacity-25 rounded border border-secondary border-opacity-10">
                               <div class="text-info small font-mono text-truncate" [title]="c.file_path">{{ c.file_path }}</div>
                               <div class="text-secondary small fst-italic mb-2">{{ c.match_reason }}</div>
                               <pre *ngIf="c.snippet" class="bg-black text-white m-0 p-2 rounded border border-secondary border-opacity-10" style="font-size: 0.8rem; max-height: 200px; overflow-y: auto;">{{ c.snippet }}</pre>
@@ -428,10 +438,10 @@
         Page {{ currentPage + 1 }}
       </div>
       <div class="d-flex gap-2">
-        <button mat-stroked-button [disabled]="currentPage === 0 || loading" (click)="prevPage()" id="btn-prev-page">
+        <button mat-stroked-button color="primary" [disabled]="currentPage === 0 || loading" (click)="prevPage()" id="btn-prev-page">
           <mat-icon>chevron_left</mat-icon> Previous
         </button>
-        <button mat-stroked-button [disabled]="!hasMore || loading" (click)="nextPage()" id="btn-next-page">
+        <button mat-stroked-button color="primary" [disabled]="!hasMore || loading" (click)="nextPage()" id="btn-next-page">
           Next <mat-icon>chevron_right</mat-icon>
         </button>
       </div>

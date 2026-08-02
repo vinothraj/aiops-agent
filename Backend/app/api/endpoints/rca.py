@@ -16,7 +16,7 @@ from app.schemas.schemas import (
     AskAiRequest,
     AskAiResponse,
 )
-from app.services.rca.rca_agent import rca_agent
+from app.services.rca.rca_agent import rca_agent, LogNotFoundError
 from app.services.rca.codebase_diagnostics import parse_stack_trace_frames, search_codebase_for_candidates
 from app.services.rca.ai_providers import get_ai_suggestion, AiProviderError
 from app.api.endpoints.settings import TARGET_CODEBASE_PATH_KEY
@@ -81,12 +81,16 @@ def trigger_analysis(
     The agent will:
     1. Fetch surrounding logs (50 before, 20 after) for context
     2. Build a rich prompt with service metadata
-    3. Call Gemini for structured analysis
+    3. Call whichever AI provider is currently configured (Claude/Gemini/Ollama)
     4. Persist results to the database
     5. Return the analysis result
+
+    Pass request.force_new=true to regenerate a fresh analysis even if one
+    already exists (e.g. after switching AI provider), instead of getting
+    back the same cached known-issue solution.
     """
     try:
-        result = rca_agent.analyze(db, log_id, metadata=request)
+        result = rca_agent.analyze(db, log_id, metadata=request, force_new=bool(request and request.force_new))
         analysis = result["analysis"]
         rca_detail = result["rca_detail"]
 
@@ -110,9 +114,13 @@ def trigger_analysis(
             incident_group_id=analysis.incident_group_id,
             is_recurring=analysis.is_recurring,
             match_score=analysis.match_score,
+            ai_provider=analysis.ai_provider,
+            ai_model=analysis.ai_model,
         )
-    except ValueError as e:
+    except LogNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except AiProviderError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=500,
