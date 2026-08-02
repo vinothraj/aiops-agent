@@ -88,10 +88,14 @@ export class SettingsComponent implements OnInit {
       claude_api_key?: string; gemini_api_key?: string;
     } = {
       provider: this.selectedProvider,
-      ollama_base_url: this.ollamaBaseUrl.trim(),
-      ollama_model: this.ollamaModel.trim(),
       auto_rca_enabled: this.autoRcaEnabled
     };
+    // Only include Ollama fields when non-empty -- omitting them (rather than
+    // sending '') leaves the stored value untouched, so saving while on the
+    // Claude/Gemini tab (or before the Ollama fields have loaded) can't
+    // accidentally blank out the configured Ollama base URL/model.
+    if (this.ollamaBaseUrl.trim()) payload.ollama_base_url = this.ollamaBaseUrl.trim();
+    if (this.ollamaModel.trim()) payload.ollama_model = this.ollamaModel.trim();
     // Only include a key if the user actually typed one -- omitting it
     // leaves whatever's already stored untouched (see clearApiKey() to
     // explicitly remove one instead).
@@ -117,10 +121,10 @@ export class SettingsComponent implements OnInit {
     this.aiProviderSaving = true;
     const payload: any = {
       provider: this.selectedProvider,
-      ollama_base_url: this.ollamaBaseUrl.trim(),
-      ollama_model: this.ollamaModel.trim(),
       auto_rca_enabled: this.autoRcaEnabled
     };
+    if (this.ollamaBaseUrl.trim()) payload.ollama_base_url = this.ollamaBaseUrl.trim();
+    if (this.ollamaModel.trim()) payload.ollama_model = this.ollamaModel.trim();
     payload[provider === 'claude' ? 'claude_api_key' : 'gemini_api_key'] = '';
 
     this.apiService.setAiProviderSettings(payload).subscribe({
