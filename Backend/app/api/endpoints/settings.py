@@ -31,7 +31,13 @@ RESET_CONFIRMATION_PHRASE = "RESET DATABASE"
 
 # App configuration, not ingested data -- excluded from the Danger Zone's
 # stats display and from what "Reset Database" clears.
-NON_RESETTABLE_TABLES = {"app_settings"}
+#
+# log_files is deliberately excluded too: it only stores each monitored
+# file's path and last-read byte offset (never the log content itself,
+# and never touches the actual files on disk). Clearing it would make the
+# watcher treat every file as brand new and re-ingest the entire historical
+# backlog from byte 0 right after a reset -- the opposite of "fresh".
+NON_RESETTABLE_TABLES = {"app_settings", "log_files"}
 
 TARGET_CODEBASE_PATH_KEY = "target_codebase_path"
 
