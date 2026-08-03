@@ -121,7 +121,36 @@ You MUST respond with valid JSON only, matching this exact schema:
     "summary": "<one paragraph summary of the entire analysis>"
 }
 
-Be thorough. Analyze the surrounding context logs to understand the sequence of events leading to and following the failure. 
+CRITICAL OUTPUT RULES:
+- Use EXACTLY these 19 field names, in snake_case, spelled exactly as shown above. Do not rename, translate, reorder, abbreviate, or invent your own field names (e.g. do NOT use "rootCause", "impact", "causeChain", or similar variants).
+- Include every field listed, even if a value is uncertain -- use an empty string "", 0.0, or an empty list [] rather than omitting the field.
+- Do not add any fields beyond the 19 listed.
+- Output raw JSON only: no markdown code fences, no commentary before or after, no explanation of your reasoning outside the JSON values themselves.
+
+Example of a correctly-shaped response (values are illustrative only -- always base your actual answer on the real logs provided):
+{
+    "incident_type": "Database connection pool exhaustion",
+    "root_cause_category": "DATABASE",
+    "root_cause": "The connection pool for the orders-service reached its maximum size and new requests began timing out while waiting for a free connection.",
+    "severity": "P2",
+    "business_impact": "Customers intermittently could not complete checkout during the affected window.",
+    "technical_impact": "orders-service request latency spiked and a subset of requests failed with connection timeout errors.",
+    "affected_services": ["orders-service"],
+    "affected_dependencies": ["PostgreSQL primary"],
+    "pattern_detected": ["Repeated Error"],
+    "deployment_related": false,
+    "recommended_action": "Increase the connection pool size and add a circuit breaker around the database client.",
+    "immediate_fix": "Restart the affected pods to release stuck connections.",
+    "short_term_fix": "Raise the connection pool max size and add pool-usage alerting.",
+    "long_term_fix": "Audit long-running queries and add read replicas to reduce primary load.",
+    "incident_recommendation": "CREATE_INCIDENT",
+    "confidence_score": 0.85,
+    "severity_confidence": 0.8,
+    "recommendation_confidence": 0.75,
+    "summary": "orders-service experienced database connection pool exhaustion under load, causing intermittent checkout failures; recommend raising pool size and adding circuit breaking."
+}
+
+Be thorough. Analyze the surrounding context logs to understand the sequence of events leading to and following the failure.
 If historical incidents or runbooks are provided, you MUST explicitly consider their documented fixes before suggesting generic ones. If a historical incident matches the current error perfectly, prioritize its resolution.
 """
 
@@ -248,6 +277,34 @@ class RootCauseAnalysisAgent:
     # ─── AI Provider Call ───────────────────────────────────────────────────
 
     _JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
+    _CAMEL_BOUNDARY_RE = re.compile(r"(?<!^)(?=[A-Z])")
+    _EXPECTED_RCA_FIELDS = set(RCAStructuredResponse.model_fields.keys())
+
+    @classmethod
+    def _to_snake_case(cls, key: str) -> str:
+        key = re.sub(r"[\s\-]+", "_", key)
+        key = cls._CAMEL_BOUNDARY_RE.sub("_", key)
+        return key.lower()
+
+    @classmethod
+    def _normalize_rca_keys(cls, parsed: dict) -> dict:
+        """
+        Weaker models (esp. smaller local ones) sometimes produce valid JSON
+        but invent their own field names (e.g. "rootCause" instead of
+        "root_cause") despite explicit instructions -- silently dropping all
+        that analysis to defaults otherwise. Recovers any key that matches an
+        expected field once converted to snake_case; anything that still
+        doesn't match (e.g. a genuinely different concept the model added) is
+        left out rather than guessed at.
+        """
+        if not isinstance(parsed, dict):
+            return {}
+        normalized = {}
+        for key, value in parsed.items():
+            target_key = key if key in cls._EXPECTED_RCA_FIELDS else cls._to_snake_case(key)
+            if target_key in cls._EXPECTED_RCA_FIELDS and target_key not in normalized:
+                normalized[target_key] = value
+        return normalized
 
     def _call_ai(self, db: Session, prompt: str) -> Tuple[RCAStructuredResponse, str, str]:
         """
@@ -281,7 +338,7 @@ class RootCauseAnalysisAgent:
 
         try:
             parsed = json.loads(raw_text)
-            return RCAStructuredResponse(**parsed)
+            return RCAStructuredResponse(**self._normalize_rca_keys(parsed))
         except (json.JSONDecodeError, Exception):
             pass
 
@@ -291,7 +348,7 @@ class RootCauseAnalysisAgent:
         if match:
             try:
                 parsed = json.loads(match.group(0))
-                return RCAStructuredResponse(**parsed)
+                return RCAStructuredResponse(**self._normalize_rca_keys(parsed))
             except (json.JSONDecodeError, Exception) as e:
                 logger.error(f"Failed to parse extracted JSON block: {e}")
 
