@@ -85,6 +85,9 @@ export class LogViewerComponent implements OnInit {
   askingAi: { [key: number]: boolean } = {};
   aiError: { [key: number]: string } = {};
 
+  // Create GitLab issue directly from a log row
+  creatingGitlabIssue: { [key: number]: boolean } = {};
+
   // Summary / chart panel
   summary: LogSummaryResponse | null = null;
   summaryLoading = false;
@@ -368,6 +371,33 @@ export class LogViewerComponent implements OnInit {
         this.diagnosisError[logId] = err.error?.detail || 'Failed to diagnose codebase.';
       }
     });
+  }
+
+  createGitlabIssue(log: LogResponse, event: Event) {
+    // Row itself toggles the expand/collapse detail panel on click -- stop
+    // that from also firing when the user clicks this icon specifically.
+    event.stopPropagation();
+    if (!log.can_create_gitlab_issue || this.creatingGitlabIssue[log.id]) {
+      return;
+    }
+    this.creatingGitlabIssue[log.id] = true;
+    this.apiService.createGitlabIssueFromLog(log.id).subscribe({
+      next: (issue) => {
+        this.creatingGitlabIssue[log.id] = false;
+        log.can_create_gitlab_issue = false;
+        log.gitlab_issue_url = issue.web_url;
+        this.showMessage(`GitLab issue created: ${issue.title}`, 'success');
+      },
+      error: (err) => {
+        this.creatingGitlabIssue[log.id] = false;
+        this.showMessage(`Failed to create GitLab issue: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
+  }
+
+  openGitlabIssue(url: string, event: Event) {
+    event.stopPropagation();
+    window.open(url, '_blank', 'noopener');
   }
 
   askAi(logId: number) {

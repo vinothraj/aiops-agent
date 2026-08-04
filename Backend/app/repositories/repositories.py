@@ -83,7 +83,7 @@ class LogRepository:
         **filters
     ) -> List[Log]:
         query = self._apply_filters(select(Log), **filters)
-        query = query.options(selectinload(Log.analyses)).order_by(Log.timestamp.desc()).offset(skip).limit(limit)
+        query = query.options(selectinload(Log.analyses), selectinload(Log.decisions)).order_by(Log.timestamp.desc()).offset(skip).limit(limit)
         return list(db.scalars(query).all())
 
     def count_matching(self, db: Session, **filters) -> int:

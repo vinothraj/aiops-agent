@@ -16,6 +16,8 @@ export interface LogResponse {
   has_rca: boolean;
   rca_severity?: string;
   rca_root_cause_category?: string;
+  can_create_gitlab_issue: boolean;
+  gitlab_issue_url?: string;
 }
 
 export interface LogFileResponse {
@@ -326,6 +328,10 @@ export class ApiService {
 
   syncGitlabIssues(): Observable<GitlabIssueResponse[]> {
     return this.http.post<GitlabIssueResponse[]>(`${this.baseUrl}/gitlab/sync`, {});
+  }
+
+  createGitlabIssueFromLog(logId: number): Observable<GitlabIssueResponse> {
+    return this.http.post<GitlabIssueResponse>(`${this.baseUrl}/gitlab/create-from-log`, { log_id: logId });
   }
 
   // ─── Notification & Timeline Integration ───────────────────────────────

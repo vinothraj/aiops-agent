@@ -16,7 +16,8 @@ from app.repositories.repositories import log_repo, log_file_repo
 from app.schemas.schemas import LogResponse, LogReprocessRequest, LogSummaryResponse
 from app.services.watcher import log_watcher_service, parse_source_identity, get_active_root_paths, parser as log_parser
 from app.services.rca import auto_trigger
-from app.models.models import Log
+from app.services.gitlab.gitlab_agent import is_gitlab_configured
+from app.models.models import Log, LogAnalysis, IncidentDecision, GitlabIssue
 import os
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,44 @@ def _parse_bucket(value, granularity: str) -> datetime:
     return datetime.strptime(value, fmt)
 
 
+def _attach_gitlab_issue_info(db: Session, logs: List[Log]) -> List[LogResponse]:
+    """
+    Bulk-attaches GitLab issue status to each log: whether its incident
+    group (any occurrence, not just this exact log) already has an issue
+    filed, so the UI can offer "create" vs. "view existing" instead of
+    risking a duplicate issue for a recurring problem. One extra query for
+    the whole page, not one per row.
+    """
+    gitlab_configured = is_gitlab_configured(db)
+    group_ids = {
+        log.analyses[0].incident_group_id
+        for log in logs
+        if log.analyses and log.analyses[0].incident_group_id
+    }
+    issue_by_group: dict = {}
+    if group_ids:
+        rows = (
+            db.query(LogAnalysis.incident_group_id, GitlabIssue)
+            .join(IncidentDecision, IncidentDecision.analysis_id == LogAnalysis.id)
+            .join(GitlabIssue, GitlabIssue.incident_decision_id == IncidentDecision.id)
+            .filter(LogAnalysis.incident_group_id.in_(group_ids))
+            .all()
+        )
+        for group_id, issue in rows:
+            issue_by_group.setdefault(group_id, issue)
+
+    results = []
+    for log in logs:
+        response = LogResponse.model_validate(log)
+        analysis = log.analyses[0] if log.analyses else None
+        group_id = analysis.incident_group_id if analysis else None
+        existing_issue = issue_by_group.get(group_id) if group_id else None
+        response.gitlab_issue_url = existing_issue.web_url if existing_issue else None
+        response.can_create_gitlab_issue = gitlab_configured and bool(log.decisions) and existing_issue is None
+        results.append(response)
+    return results
+
+
 @router.get("", response_model=List[LogResponse])
 def get_logs(
     service_name: Optional[str] = None,
@@ -83,7 +122,7 @@ def get_logs(
         end_date=end_date,
         search_query=search_query
     )
-    return logs
+    return _attach_gitlab_issue_info(db, logs)
 
 @router.get("/search", response_model=List[LogResponse])
 def search_logs(

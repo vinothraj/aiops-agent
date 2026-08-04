@@ -203,6 +203,25 @@
                   }">{{ log.log_level }}</span>
                   <mat-icon *ngIf="log.log_level === 'ERROR' && log.has_rca" class="text-success" style="font-size: 1.1rem; width: auto; height: auto;" title="RCA solution found">task_alt</mat-icon>
                   <mat-icon *ngIf="log.log_level === 'ERROR' && !log.has_rca" class="text-danger" style="font-size: 1.1rem; width: auto; height: auto;" title="No RCA solution yet">report_problem</mat-icon>
+
+                  <!-- GitLab issue action: create / already-filed link / disabled -->
+                  <ng-container *ngIf="log.log_level === 'ERROR'">
+                    <mat-icon *ngIf="log.gitlab_issue_url" class="text-info" role="button"
+                              style="font-size: 1.1rem; width: auto; height: auto; cursor: pointer;"
+                              title="GitLab issue already created for this recurring problem -- click to open"
+                              (click)="openGitlabIssue(log.gitlab_issue_url, $event)"
+                              [attr.id]="'btn-open-gitlab-issue-' + log.id">link</mat-icon>
+                    <mat-spinner *ngIf="!log.gitlab_issue_url && creatingGitlabIssue[log.id]" diameter="16"></mat-spinner>
+                    <mat-icon *ngIf="!log.gitlab_issue_url && !creatingGitlabIssue[log.id] && log.can_create_gitlab_issue"
+                              class="text-secondary" role="button"
+                              style="font-size: 1.1rem; width: auto; height: auto; cursor: pointer;"
+                              title="Create a GitLab issue for this log"
+                              (click)="createGitlabIssue(log, $event)"
+                              [attr.id]="'btn-create-gitlab-issue-' + log.id">bug_report</mat-icon>
+                    <mat-icon *ngIf="!log.gitlab_issue_url && !creatingGitlabIssue[log.id] && !log.can_create_gitlab_issue"
+                              class="text-secondary" style="font-size: 1.1rem; width: auto; height: auto; opacity: 0.35;"
+                              [title]="log.has_rca ? 'GitLab is not configured -- set it up in Settings' : 'Run RCA analysis first to create a GitLab issue'">bug_report</mat-icon>
+                  </ng-container>
                 </div>
               </td>
               <td class="text-white fw-semibold">{{ log.service_name }}</td>

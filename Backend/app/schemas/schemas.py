@@ -62,6 +62,12 @@ class LogResponse(LogBase):
     has_rca: bool = False
     rca_severity: Optional[str] = None
     rca_root_cause_category: Optional[str] = None
+    # Whether a GitLab issue already exists for this log's incident group
+    # (any occurrence, not just this exact log) -- if so, gitlab_issue_url
+    # points at it and can_create_gitlab_issue is false to prevent duplicate
+    # filing for what's really one recurring problem.
+    can_create_gitlab_issue: bool = False
+    gitlab_issue_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -285,6 +291,9 @@ class TriageDecisionResponse(BaseModel):
 
 class GitlabIssueCreateRequest(BaseModel):
     incident_decision_id: int
+
+class GitlabIssueCreateFromLogRequest(BaseModel):
+    log_id: int
 
 class IssueActivityResponse(BaseModel):
     id: int
