@@ -179,6 +179,11 @@ export interface AiProviderSettingsResponse {
   auto_rca_enabled: boolean;
 }
 
+export interface LogRetentionSettingsResponse {
+  enabled: boolean;
+  retention_hours: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -388,6 +393,14 @@ export class ApiService {
 
   setAiProviderSettings(payload: { provider: string; ollama_base_url?: string; ollama_model?: string; auto_rca_enabled?: boolean; claude_api_key?: string; gemini_api_key?: string }): Observable<AiProviderSettingsResponse> {
     return this.http.put<AiProviderSettingsResponse>(`${this.baseUrl}/settings/ai-provider`, payload);
+  }
+
+  getLogRetentionSettings(): Observable<LogRetentionSettingsResponse> {
+    return this.http.get<LogRetentionSettingsResponse>(`${this.baseUrl}/settings/log-retention`);
+  }
+
+  setLogRetentionSettings(enabled: boolean): Observable<LogRetentionSettingsResponse> {
+    return this.http.put<LogRetentionSettingsResponse>(`${this.baseUrl}/settings/log-retention`, { enabled });
   }
 
   // ─── RCA Codebase Diagnostics ───────────────────────────────────────────

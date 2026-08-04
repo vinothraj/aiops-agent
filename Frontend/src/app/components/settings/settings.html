@@ -138,6 +138,35 @@
     </div>
   </div>
 
+  <!-- Log Retention -->
+  <div class="glass-panel p-4 mb-4" id="log-retention-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <mat-icon class="text-primary">auto_delete</mat-icon>
+      <h5 class="text-white m-0">Log Retention</h5>
+    </div>
+    <p class="text-secondary small mb-3">
+      Keeps the database (and the CPU/disk load that comes with it) bounded on smaller machines by automatically
+      pruning old, unanalyzed raw log lines. Logs with a root cause analysis or incident decision are always kept,
+      no matter how old.
+    </p>
+
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch" id="log-retention-toggle"
+             [checked]="logRetention?.enabled" [disabled]="logRetentionSaving || !logRetention" (change)="onToggleLogRetention($event)">
+      <label class="form-check-label text-white small fw-semibold" for="log-retention-toggle">
+        Keep only the last {{ logRetention?.retention_hours || 24 }} hours of raw logs
+      </label>
+    </div>
+    <p class="text-secondary small mt-1 mb-0">
+      Off by default. A background sweep runs every few minutes and deletes raw log lines older than
+      {{ logRetention?.retention_hours || 24 }} hours that were never analyzed.
+      <span *ngIf="logRetention?.enabled" class="text-success d-block mt-1">
+        <mat-icon style="font-size: 1rem; width: auto; height: auto; vertical-align: text-top;">check_circle</mat-icon>
+        Active — pruning unanalyzed logs older than {{ logRetention?.retention_hours }}h.
+      </span>
+    </p>
+  </div>
+
   <!-- Danger Zone -->
   <div class="glass-panel p-4 border border-danger border-opacity-25" id="danger-zone-card">
     <div class="d-flex align-items-center gap-2 mb-2">

@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.router import api_router
 from app.services.watcher import log_watcher_service
+from app.services.log_retention import log_retention_service
 from app.database.session import Base, engine
 
 # Setup logging
@@ -28,15 +29,24 @@ async def lifespan(app: FastAPI):
             log_watcher_service.scan_directory()
     except Exception as e:
         logger.error(f"Error starting Log Watcher Service: {str(e)}", exc_info=True)
-    
+
+    try:
+        log_retention_service.start()
+    except Exception as e:
+        logger.error(f"Error starting Log Retention Service: {str(e)}", exc_info=True)
+
     yield
-    
+
     # Shutdown actions
     logger.info("Shutting down AIOps Platform Foundation...")
     try:
         log_watcher_service.stop()
     except Exception as e:
         logger.error(f"Error stopping Log Watcher Service: {str(e)}", exc_info=True)
+    try:
+        log_retention_service.stop()
+    except Exception as e:
+        logger.error(f"Error stopping Log Retention Service: {str(e)}", exc_info=True)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

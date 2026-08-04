@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, AiProviderSettingsResponse } from '../../services/api.service';
+import { ApiService, AiProviderSettingsResponse, LogRetentionSettingsResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -47,6 +47,11 @@ export class SettingsComponent implements OnInit {
   claudeApiKeyInput = '';
   geminiApiKeyInput = '';
 
+  // Log retention: when enabled, a background job prunes raw unanalyzed
+  // logs older than retentionHours to keep DB size/CPU load down.
+  logRetention: LogRetentionSettingsResponse | null = null;
+  logRetentionSaving = false;
+
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
   confirmStep = 0;
   typedConfirmation = '';
@@ -61,6 +66,50 @@ export class SettingsComponent implements OnInit {
     this.loadStats();
     this.loadCodebasePath();
     this.loadAiProvider();
+    this.loadLogRetention();
+  }
+
+  loadLogRetention() {
+    this.apiService.getLogRetentionSettings().subscribe({
+      next: (data) => this.logRetention = data,
+      error: (err) => console.error('Error fetching log retention settings', err)
+    });
+  }
+
+  onToggleLogRetention(event: Event) {
+    const checkbox = event.target as HTMLInputElement;
+    const wantsEnabled = checkbox.checked;
+    const hours = this.logRetention?.retention_hours ?? 24;
+
+    if (wantsEnabled) {
+      const confirmed = window.confirm(
+        `Enabling this will permanently delete raw log lines older than ${hours} hours, checked every few minutes.\n\n` +
+        'Logs that already have a root cause analysis or incident decision are never deleted, no matter how old -- ' +
+        'only unanalyzed raw log noise gets pruned.\n\n' +
+        'Enable automatic log retention?'
+      );
+      if (!confirmed) {
+        checkbox.checked = false;
+        return;
+      }
+    }
+
+    this.logRetentionSaving = true;
+    this.apiService.setLogRetentionSettings(wantsEnabled).subscribe({
+      next: (data) => {
+        this.logRetention = data;
+        this.logRetentionSaving = false;
+        this.showMessage(
+          wantsEnabled ? `Log retention enabled -- logs older than ${data.retention_hours}h will be pruned automatically.` : 'Log retention disabled.',
+          'success'
+        );
+      },
+      error: (err) => {
+        this.logRetentionSaving = false;
+        checkbox.checked = !wantsEnabled;
+        this.showMessage(`Failed to save log retention setting: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
   }
 
   loadAiProvider() {

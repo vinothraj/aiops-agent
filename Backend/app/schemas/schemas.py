@@ -114,6 +114,13 @@ class AiProviderSettingsUpdate(BaseModel):
     claude_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
 
+class LogRetentionSettingsResponse(BaseModel):
+    enabled: bool
+    retention_hours: int
+
+class LogRetentionSettingsUpdate(BaseModel):
+    enabled: bool
+
 class LogSummaryResponse(BaseModel):
     """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""
     total_matched: int

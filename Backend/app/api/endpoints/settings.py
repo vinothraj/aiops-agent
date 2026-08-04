@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session
 from app.core.config import settings as app_settings
 from app.database.session import Base, engine, get_db
 from app.repositories.repositories import app_setting_repo
-from app.schemas.schemas import AppSettingResponse, TargetCodebasePathUpdate, AiProviderSettingsResponse, AiProviderSettingsUpdate
+from app.schemas.schemas import (
+    AppSettingResponse, TargetCodebasePathUpdate, AiProviderSettingsResponse, AiProviderSettingsUpdate,
+    LogRetentionSettingsResponse, LogRetentionSettingsUpdate,
+)
 from app.services.rca.ai_providers import (
     get_provider_config,
     is_claude_configured,
@@ -22,6 +25,7 @@ from app.services.rca.ai_providers import (
     GEMINI_API_KEY_SETTING,
     VALID_PROVIDERS,
 )
+from app.services.log_retention import LOG_RETENTION_ENABLED_KEY, RETENTION_HOURS, log_retention_service
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +151,32 @@ def set_ai_provider_settings(payload: AiProviderSettingsUpdate, db: Session = De
         gemini_configured=is_gemini_configured(db),
         auto_rca_enabled=config["auto_rca_enabled"],
     )
+
+
+@router.get("/log-retention", response_model=LogRetentionSettingsResponse)
+def get_log_retention_settings(db: Session = Depends(get_db)):
+    """Whether the background job that prunes old, unanalyzed logs is enabled."""
+    enabled = (app_setting_repo.get(db, LOG_RETENTION_ENABLED_KEY) or "false").lower() == "true"
+    return LogRetentionSettingsResponse(enabled=enabled, retention_hours=RETENTION_HOURS)
+
+
+@router.put("/log-retention", response_model=LogRetentionSettingsResponse)
+def set_log_retention_settings(payload: LogRetentionSettingsUpdate, db: Session = Depends(get_db)):
+    """
+    Toggles automatic log retention: when enabled, a background sweep runs
+    every few minutes and deletes raw ingested logs older than
+    RETENTION_HOURS to keep DB size (and the load that comes with it) down.
+    Logs tied to an RCA analysis or incident decision are always preserved
+    regardless of age -- only unanalyzed noise is ever pruned. Runs an
+    immediate sweep on enable rather than waiting for the next cycle.
+    """
+    app_setting_repo.set(db, LOG_RETENTION_ENABLED_KEY, "true" if payload.enabled else "false")
+    if payload.enabled:
+        try:
+            log_retention_service.run_once_if_enabled()
+        except Exception as e:
+            logger.error(f"Immediate log retention sweep failed: {e}", exc_info=True)
+    return LogRetentionSettingsResponse(enabled=payload.enabled, retention_hours=RETENTION_HOURS)
 
 
 @router.post("/database/reset")
