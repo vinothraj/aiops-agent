@@ -60,11 +60,14 @@ def _parse_bucket(value, granularity: str) -> datetime:
 
 def _attach_gitlab_issue_info(db: Session, logs: List[Log]) -> List[LogResponse]:
     """
-    Bulk-attaches GitLab issue status to each log: whether its incident
-    group (any occurrence, not just this exact log) already has an issue
-    filed, so the UI can offer "create" vs. "view existing" instead of
-    risking a duplicate issue for a recurring problem. One extra query for
-    the whole page, not one per row.
+    Bulk-attaches GitLab issue status to each log, checked two ways so both
+    RCA-backed and raw (no-analysis) issue filing dedup correctly:
+    1. Via incident group (any occurrence sharing this log's root cause).
+    2. Directly via this exact log's own decision(s) -- covers logs filed
+       from raw details, which have no incident group to share.
+    Either way, if an issue already exists the UI offers "view existing"
+    instead of risking a duplicate. Two extra bulk queries for the whole
+    page, not one per row.
     """
     gitlab_configured = is_gitlab_configured(db)
     group_ids = {
@@ -84,14 +87,26 @@ def _attach_gitlab_issue_info(db: Session, logs: List[Log]) -> List[LogResponse]
         for group_id, issue in rows:
             issue_by_group.setdefault(group_id, issue)
 
+    log_ids = [log.id for log in logs]
+    issue_by_log: dict = {}
+    if log_ids:
+        rows = (
+            db.query(IncidentDecision.log_id, GitlabIssue)
+            .join(GitlabIssue, GitlabIssue.incident_decision_id == IncidentDecision.id)
+            .filter(IncidentDecision.log_id.in_(log_ids))
+            .all()
+        )
+        for log_id, issue in rows:
+            issue_by_log.setdefault(log_id, issue)
+
     results = []
     for log in logs:
         response = LogResponse.model_validate(log)
         analysis = log.analyses[0] if log.analyses else None
         group_id = analysis.incident_group_id if analysis else None
-        existing_issue = issue_by_group.get(group_id) if group_id else None
+        existing_issue = (issue_by_group.get(group_id) if group_id else None) or issue_by_log.get(log.id)
         response.gitlab_issue_url = existing_issue.web_url if existing_issue else None
-        response.can_create_gitlab_issue = gitlab_configured and bool(log.decisions) and existing_issue is None
+        response.can_create_gitlab_issue = gitlab_configured and existing_issue is None
         results.append(response)
     return results
 

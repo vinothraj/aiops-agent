@@ -380,6 +380,17 @@ export class LogViewerComponent implements OnInit {
     if (!log.can_create_gitlab_issue || this.creatingGitlabIssue[log.id]) {
       return;
     }
+
+    if (!log.has_rca) {
+      const confirmed = window.confirm(
+        "This log hasn't been analyzed yet -- there's no AI-generated root cause for it.\n\n" +
+        'File a GitLab issue using just the raw log details (message, stack trace, service, timestamp) instead? ' +
+        'This uses no AI tokens.\n\n' +
+        'Create issue from raw log details?'
+      );
+      if (!confirmed) return;
+    }
+
     this.creatingGitlabIssue[log.id] = true;
     this.apiService.createGitlabIssueFromLog(log.id).subscribe({
       next: (issue) => {

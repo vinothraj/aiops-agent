@@ -215,12 +215,12 @@
                     <mat-icon *ngIf="!log.gitlab_issue_url && !creatingGitlabIssue[log.id] && log.can_create_gitlab_issue"
                               class="text-secondary" role="button"
                               style="font-size: 1.1rem; width: auto; height: auto; cursor: pointer;"
-                              title="Create a GitLab issue for this log"
+                              [title]="log.has_rca ? 'Create a GitLab issue for this log' : 'Create a GitLab issue from raw log details (no RCA analysis yet -- no AI tokens used)'"
                               (click)="createGitlabIssue(log, $event)"
                               [attr.id]="'btn-create-gitlab-issue-' + log.id">bug_report</mat-icon>
                     <mat-icon *ngIf="!log.gitlab_issue_url && !creatingGitlabIssue[log.id] && !log.can_create_gitlab_issue"
                               class="text-secondary" style="font-size: 1.1rem; width: auto; height: auto; opacity: 0.35;"
-                              [title]="log.has_rca ? 'GitLab is not configured -- set it up in Settings' : 'Run RCA analysis first to create a GitLab issue'">bug_report</mat-icon>
+                              title="GitLab is not configured -- set it up in Settings">bug_report</mat-icon>
                   </ng-container>
                 </div>
               </td>
