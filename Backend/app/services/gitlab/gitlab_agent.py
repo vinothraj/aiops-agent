@@ -12,25 +12,46 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.models import IncidentDecision, GitlabIssue, IssueActivity, LogAnalysis
+from app.repositories.repositories import app_setting_repo
 
 logger = logging.getLogger(__name__)
 
+GITLAB_URL_SETTING = "gitlab_url"
+GITLAB_TOKEN_SETTING = "gitlab_private_token"
+GITLAB_PROJECT_ID_SETTING = "gitlab_project_id"
+
+
+def get_gitlab_config(db: Session) -> dict:
+    """DB-stored values (set via Settings) take precedence over .env, so the
+    integration is fully configurable from the UI without a redeploy."""
+    return {
+        "url": app_setting_repo.get(db, GITLAB_URL_SETTING) or settings.GITLAB_URL,
+        "token": app_setting_repo.get(db, GITLAB_TOKEN_SETTING) or settings.GITLAB_PRIVATE_TOKEN,
+        "project_id": app_setting_repo.get(db, GITLAB_PROJECT_ID_SETTING) or settings.GITLAB_PROJECT_ID,
+    }
+
+
+def is_gitlab_configured(db: Session) -> bool:
+    config = get_gitlab_config(db)
+    return bool(config["url"] and config["token"] and config["project_id"])
+
+
 class GitlabAgent:
-    def __init__(self):
-        self.enabled = bool(settings.GITLAB_URL and settings.GITLAB_PRIVATE_TOKEN and settings.GITLAB_PROJECT_ID)
-        self.gl = None
-        if self.enabled:
-            try:
-                self.gl = gitlab.Gitlab(
-                    url=settings.GITLAB_URL,
-                    private_token=settings.GITLAB_PRIVATE_TOKEN,
-                    ssl_verify=False
-                )
-                # Test connection optionally
-                # self.gl.auth()
-            except Exception as e:
-                logger.error(f"Failed to initialize GitLab client: {e}")
-                self.enabled = False
+    def _get_client(self, db: Session):
+        """
+        Resolves config and builds a client fresh on every call (rather than
+        once at import time) so a config change made in Settings takes effect
+        immediately, with no app restart needed.
+        """
+        config = get_gitlab_config(db)
+        if not (config["url"] and config["token"] and config["project_id"]):
+            return None, None
+        try:
+            gl = gitlab.Gitlab(url=config["url"], private_token=config["token"], ssl_verify=False)
+            return gl, config["project_id"]
+        except Exception as e:
+            logger.error(f"Failed to initialize GitLab client: {e}")
+            return None, None
 
     def _format_issue_description(self, decision: IncidentDecision) -> str:
         """Format a rich Markdown description for the GitLab issue."""
@@ -80,7 +101,8 @@ class GitlabAgent:
 
     def create_issue(self, db: Session, decision_id: int) -> Optional[GitlabIssue]:
         """Creates an issue in GitLab and stores it in the local database."""
-        if not self.enabled:
+        gl, project_id = self._get_client(db)
+        if not gl:
             logger.warning("GitLab Agent is not configured. Skipping issue creation.")
             return None
 
@@ -97,8 +119,8 @@ class GitlabAgent:
             return existing_issue
 
         try:
-            project = self.gl.projects.get(settings.GITLAB_PROJECT_ID)
-            
+            project = gl.projects.get(project_id)
+
             title = f"[AIOps] {decision.priority} Incident in {decision.log.service_name if decision.log else 'Service'}"
             description = self._format_issue_description(decision)
             labels = ["AIOps", decision.priority, "auto-generated"]
@@ -147,14 +169,15 @@ class GitlabAgent:
 
     def sync_issues(self, db: Session) -> List[GitlabIssue]:
         """Fetches latest status for all tracked open issues and updates local DB."""
-        if not self.enabled:
+        gl, project_id = self._get_client(db)
+        if not gl:
             return []
-            
+
         open_issues = db.scalars(select(GitlabIssue).where(GitlabIssue.state != "closed")).all()
         updated_issues = []
-        
+
         try:
-            project = self.gl.projects.get(settings.GITLAB_PROJECT_ID)
+            project = gl.projects.get(project_id)
             for db_issue in open_issues:
                 try:
                     gl_issue = project.issues.get(db_issue.gitlab_issue_iid)

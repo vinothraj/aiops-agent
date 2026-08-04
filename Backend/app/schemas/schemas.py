@@ -121,6 +121,19 @@ class LogRetentionSettingsResponse(BaseModel):
 class LogRetentionSettingsUpdate(BaseModel):
     enabled: bool
 
+class GitlabSettingsResponse(BaseModel):
+    url: str = ""
+    project_id: str = ""
+    configured: bool = False
+
+class GitlabSettingsUpdate(BaseModel):
+    url: Optional[str] = None
+    project_id: Optional[str] = None
+    # Write-only: never echoed back in GitlabSettingsResponse. Omit to leave
+    # the stored token untouched; send "" to explicitly clear it back to
+    # falling through to the .env value.
+    private_token: Optional[str] = None
+
 class LogSummaryResponse(BaseModel):
     """Aggregated view of the currently filtered logs, for the Log Explorer's chart panel."""
     total_matched: int

@@ -167,6 +167,54 @@
     </p>
   </div>
 
+  <!-- GitLab Integration -->
+  <div class="glass-panel p-4 mb-4" id="gitlab-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <mat-icon class="text-primary">merge_type</mat-icon>
+      <h5 class="text-white m-0">GitLab Integration</h5>
+    </div>
+    <p class="text-secondary small mb-3">
+      GitLab project auto-generated incident issues are filed against. Configured here, this takes precedence over
+      <code class="text-info">GITLAB_URL</code>/<code class="text-info">GITLAB_PRIVATE_TOKEN</code>/<code class="text-info">GITLAB_PROJECT_ID</code>
+      in the backend <code class="text-info">.env</code> file — no redeploy needed to point at a different project.
+    </p>
+
+    <div class="row g-2 align-items-end mb-2" id="gitlab-form">
+      <div class="col-12 col-md-5">
+        <label for="gitlab-url-input" class="form-label text-secondary fw-semibold small">GitLab URL</label>
+        <input type="text" id="gitlab-url-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               placeholder="https://gitlab.company.com" [(ngModel)]="gitlabUrlInput">
+      </div>
+      <div class="col-12 col-md-3">
+        <label for="gitlab-project-id-input" class="form-label text-secondary fw-semibold small">Project ID</label>
+        <input type="text" id="gitlab-project-id-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               placeholder="12345" [(ngModel)]="gitlabProjectIdInput">
+      </div>
+      <div class="col-12 col-md-4">
+        <label for="gitlab-token-input" class="form-label text-secondary fw-semibold small">Private Token</label>
+        <input type="password" id="gitlab-token-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
+               [placeholder]="gitlab?.configured ? 'Configured — leave blank to keep current' : 'glpat-...'"
+               [(ngModel)]="gitlabTokenInput" autocomplete="new-password">
+      </div>
+    </div>
+
+    <div class="row g-2" id="gitlab-actions">
+      <div class="col-12 col-md-8">
+        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
+                style="background: var(--accent-gradient);" [disabled]="gitlabSaving" (click)="saveGitlab()" id="btn-save-gitlab">
+          <mat-icon *ngIf="!gitlabSaving">save</mat-icon>
+          <mat-spinner *ngIf="gitlabSaving" diameter="18"></mat-spinner>
+          Save
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="gitlab" class="small text-secondary mt-3 d-inline-flex align-items-center gap-2" id="gitlab-status">
+      GitLab: <span [ngClass]="gitlab.configured ? 'text-success' : 'text-warning'">{{ gitlab.configured ? 'configured' : 'not set' }}</span>
+      <button *ngIf="gitlab.configured" class="btn btn-link btn-sm text-danger p-0" [disabled]="gitlabSaving" (click)="clearGitlabToken()" id="btn-clear-gitlab-token">Clear token</button>
+    </div>
+  </div>
+
   <!-- Danger Zone -->
   <div class="glass-panel p-4 border border-danger border-opacity-25" id="danger-zone-card">
     <div class="d-flex align-items-center gap-2 mb-2">

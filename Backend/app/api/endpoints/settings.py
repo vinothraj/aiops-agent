@@ -11,7 +11,7 @@ from app.database.session import Base, engine, get_db
 from app.repositories.repositories import app_setting_repo
 from app.schemas.schemas import (
     AppSettingResponse, TargetCodebasePathUpdate, AiProviderSettingsResponse, AiProviderSettingsUpdate,
-    LogRetentionSettingsResponse, LogRetentionSettingsUpdate,
+    LogRetentionSettingsResponse, LogRetentionSettingsUpdate, GitlabSettingsResponse, GitlabSettingsUpdate,
 )
 from app.services.rca.ai_providers import (
     get_provider_config,
@@ -26,6 +26,13 @@ from app.services.rca.ai_providers import (
     VALID_PROVIDERS,
 )
 from app.services.log_retention import LOG_RETENTION_ENABLED_KEY, RETENTION_HOURS, log_retention_service
+from app.services.gitlab.gitlab_agent import (
+    get_gitlab_config,
+    is_gitlab_configured,
+    GITLAB_URL_SETTING,
+    GITLAB_TOKEN_SETTING,
+    GITLAB_PROJECT_ID_SETTING,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +184,46 @@ def set_log_retention_settings(payload: LogRetentionSettingsUpdate, db: Session 
         except Exception as e:
             logger.error(f"Immediate log retention sweep failed: {e}", exc_info=True)
     return LogRetentionSettingsResponse(enabled=payload.enabled, retention_hours=RETENTION_HOURS)
+
+
+@router.get("/gitlab", response_model=GitlabSettingsResponse)
+def get_gitlab_settings(db: Session = Depends(get_db)):
+    """
+    Returns the currently configured GitLab project (URL + project ID, plus
+    whether a private token is set -- never the token itself). Checks both a
+    Settings-stored value and the .env fallback.
+    """
+    config = get_gitlab_config(db)
+    return GitlabSettingsResponse(
+        url=config["url"] or "",
+        project_id=str(config["project_id"] or ""),
+        configured=is_gitlab_configured(db),
+    )
+
+
+@router.put("/gitlab", response_model=GitlabSettingsResponse)
+def set_gitlab_settings(payload: GitlabSettingsUpdate, db: Session = Depends(get_db)):
+    """
+    Configures the GitLab project AIOps files auto-generated incident issues
+    against, directly from this UI (stored in the database, taking
+    precedence over the .env file -- so it's fully configurable without
+    touching the codebase or restarting the backend). Send an empty string
+    for private_token to clear the stored token and fall back to .env; omit
+    a field entirely to leave whatever's currently stored untouched.
+    """
+    if payload.url is not None:
+        app_setting_repo.set(db, GITLAB_URL_SETTING, payload.url.strip())
+    if payload.project_id is not None:
+        app_setting_repo.set(db, GITLAB_PROJECT_ID_SETTING, payload.project_id.strip())
+    if payload.private_token is not None:
+        app_setting_repo.set(db, GITLAB_TOKEN_SETTING, payload.private_token.strip())
+
+    config = get_gitlab_config(db)
+    return GitlabSettingsResponse(
+        url=config["url"] or "",
+        project_id=str(config["project_id"] or ""),
+        configured=is_gitlab_configured(db),
+    )
 
 
 @router.post("/database/reset")

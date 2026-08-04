@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, AiProviderSettingsResponse, LogRetentionSettingsResponse } from '../../services/api.service';
+import { ApiService, AiProviderSettingsResponse, LogRetentionSettingsResponse, GitlabSettingsResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -52,6 +52,13 @@ export class SettingsComponent implements OnInit {
   logRetention: LogRetentionSettingsResponse | null = null;
   logRetentionSaving = false;
 
+  // GitLab project config, used to auto-file incident issues
+  gitlab: GitlabSettingsResponse | null = null;
+  gitlabUrlInput = '';
+  gitlabProjectIdInput = '';
+  gitlabTokenInput = ''; // write-only, never populated from the server response
+  gitlabSaving = false;
+
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
   confirmStep = 0;
   typedConfirmation = '';
@@ -67,6 +74,59 @@ export class SettingsComponent implements OnInit {
     this.loadCodebasePath();
     this.loadAiProvider();
     this.loadLogRetention();
+    this.loadGitlab();
+  }
+
+  loadGitlab() {
+    this.apiService.getGitlabSettings().subscribe({
+      next: (data) => {
+        this.gitlab = data;
+        this.gitlabUrlInput = data.url;
+        this.gitlabProjectIdInput = data.project_id;
+      },
+      error: (err) => console.error('Error fetching GitLab settings', err)
+    });
+  }
+
+  saveGitlab() {
+    this.gitlabSaving = true;
+    const payload: { url?: string; project_id?: string; private_token?: string } = {
+      url: this.gitlabUrlInput.trim(),
+      project_id: this.gitlabProjectIdInput.trim()
+    };
+    if (this.gitlabTokenInput.trim()) payload.private_token = this.gitlabTokenInput.trim();
+
+    this.apiService.setGitlabSettings(payload).subscribe({
+      next: (data) => {
+        this.gitlab = data;
+        this.gitlabSaving = false;
+        this.gitlabTokenInput = '';
+        this.showMessage('GitLab configuration saved.', 'success');
+      },
+      error: (err) => {
+        this.gitlabSaving = false;
+        this.showMessage(`Failed to save GitLab configuration: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
+  }
+
+  clearGitlabToken() {
+    this.gitlabSaving = true;
+    this.apiService.setGitlabSettings({
+      url: this.gitlabUrlInput.trim(),
+      project_id: this.gitlabProjectIdInput.trim(),
+      private_token: ''
+    }).subscribe({
+      next: (data) => {
+        this.gitlab = data;
+        this.gitlabSaving = false;
+        this.showMessage('Cleared stored GitLab token (falls back to .env if set there).', 'success');
+      },
+      error: (err) => {
+        this.gitlabSaving = false;
+        this.showMessage(`Failed to clear token: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
   }
 
   loadLogRetention() {

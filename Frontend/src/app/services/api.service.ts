@@ -184,6 +184,12 @@ export interface LogRetentionSettingsResponse {
   retention_hours: number;
 }
 
+export interface GitlabSettingsResponse {
+  url: string;
+  project_id: string;
+  configured: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -401,6 +407,14 @@ export class ApiService {
 
   setLogRetentionSettings(enabled: boolean): Observable<LogRetentionSettingsResponse> {
     return this.http.put<LogRetentionSettingsResponse>(`${this.baseUrl}/settings/log-retention`, { enabled });
+  }
+
+  getGitlabSettings(): Observable<GitlabSettingsResponse> {
+    return this.http.get<GitlabSettingsResponse>(`${this.baseUrl}/settings/gitlab`);
+  }
+
+  setGitlabSettings(payload: { url?: string; project_id?: string; private_token?: string }): Observable<GitlabSettingsResponse> {
+    return this.http.put<GitlabSettingsResponse>(`${this.baseUrl}/settings/gitlab`, payload);
   }
 
   // ─── RCA Codebase Diagnostics ───────────────────────────────────────────
