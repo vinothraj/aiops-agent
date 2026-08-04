@@ -62,7 +62,9 @@ CLAUDE_API_KEY=
 GEMINI_API_KEY=
 # Ollama needs no key -- see step 7 -- just set the provider to "ollama" in Settings once it's running
 
-# GitLab issue integration
+# GitLab issue integration (optional here -- can also be set entirely from
+# Settings -> GitLab Integration in the UI instead, which takes precedence
+# over these and needs no restart to change)
 GITLAB_URL=
 GITLAB_PRIVATE_TOKEN=
 GITLAB_PROJECT_ID=
@@ -114,6 +116,7 @@ Once both are running, open `http://localhost:4200/settings` and configure:
 - **RCA Codebase Diagnostics** — local path to the codebase you want "Diagnose in Codebase" / "Ask AI" to search against (optional).
 - **AI Provider** — pick Claude, Gemini, or Ollama, and enter the API key directly here if you didn't set it in `.env` (a key entered here is stored in the database and takes precedence over `.env`).
 - **Log Retention** — optional; enable if you want old, unanalyzed logs auto-pruned to keep DB size and CPU load down on smaller machines.
+- **GitLab Integration** — optional; configure the GitLab URL, project ID, and private token here instead of `.env` to auto-file incident issues against a specific project, with no restart needed to change it later.
 
 Then add at least one monitored log directory from the Log Sources page (or set `MONITORED_LOGS_DIR` in `.env` to point at an existing folder of logs).
 
