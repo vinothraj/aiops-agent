@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings as app_settings
 from app.repositories.repositories import app_setting_repo
+from app.services.rca.pii_masking import mask_sensitive_data
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,9 @@ def get_ai_suggestion(db: Session, prompt: str, system_prompt: Optional[str] = N
     """
     config = get_provider_config(db)
     provider = config["provider"]
+
+    prompt = mask_sensitive_data(prompt)
+    system_prompt = mask_sensitive_data(system_prompt)
 
     if provider == "claude":
         model, text = _call_claude(db, prompt, system_prompt)

@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # Qdrant Configuration
     QDRANT_PATH: str = "qdrant_data"
 
+    # PII / Sensitive Data Masking
+    # When true, customer/order/account/site/user identifiers and email
+    # addresses embedded in log messages are redacted before any text is
+    # sent to an external AI provider (Claude, Gemini) or used to generate
+    # a Gemini embedding. Does not affect what's stored in Postgres/Qdrant.
+    MASK_SENSITIVE_DATA_IN_AI_REQUESTS: bool = True
+
     # Incident Grouping / Known-Issue Matching
     # Cosine similarity (0-1) above which a new error is treated as a confirmed
     # recurrence of an existing incident group rather than a fresh analysis.

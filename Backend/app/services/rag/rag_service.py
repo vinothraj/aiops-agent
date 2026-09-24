@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.models import KnowledgeDocument, IncidentHistory, Runbook
+from app.services.rca.pii_masking import mask_sensitive_data
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +46,10 @@ class RAGService:
             raise ValueError("GEMINI_API_KEY is not configured.")
         
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        
+
         result = genai.embed_content(
             model=settings.GEMINI_EMBEDDING_MODEL,
-            content=text,
+            content=mask_sensitive_data(text),
             task_type=task_type
         )
         return result['embedding']
