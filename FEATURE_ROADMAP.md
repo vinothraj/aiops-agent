@@ -39,6 +39,10 @@ Log files → Watcher / Parser → DB → Auto-RCA (Claude / Gemini / Ollama + Q
 | 5 | No human approval workflow (Module 11) and no LangGraph orchestration (Module 10) | — | Critical incidents are escalated without review |
 | 6 | No automated test suite – only ad hoc scripts (`test_parser.py`, `test_rag.py`) | `Backend/` | Regressions go unnoticed |
 | 7 | Architecture documentation is out of date (still describes Gemini 1.5 only and SQLite) | `AIOPS_PROJECT_DOCUMENTATION.md` | Onboarding confusion |
+| 8 | RAG embeddings are hard-wired to Gemini – without `GEMINI_API_KEY` the RAG search is silently skipped, even when Claude or Ollama is the active RCA provider | `services/rag/rag_service.py` | RCA runs with no historical context and no warning in the UI |
+| 9 | No relevance threshold on RAG search – the top 5 hits are always injected into the prompt, even unrelated ones | `services/rag/rag_service.py`, `services/rca/rca_agent.py` | Irrelevant context can mislead the RCA |
+| 10 | Postgres and Qdrant can drift apart – the `knowledge_documents` row is committed before embedding, so a failed embedding leaves a row with no vector; deletes in Postgres (reset, retention) never remove Qdrant points | `services/rag/rag_service.py` | Orphaned rows and stale vectors |
+| 11 | Qdrant runs in embedded mode (`qdrant_data/` folder), which only one process can open | `services/rag/rag_service.py`, `core/config.py` | Blocks multiple uvicorn workers or backend replicas |
 
 ---
 
@@ -73,16 +77,25 @@ The scoring and scheduler fixes change how every later phase behaves, so they co
    - The AI-reported severity
    - A category-based impact score (e.g. `DATABASE`, `PAYMENT`, `NETWORK` weighted by business criticality, configurable in Settings)
    - Frequency and confidence as today
-4. Refresh `AIOPS_PROJECT_DOCUMENTATION.md` (multi-provider AI, PostgreSQL, new modules).
+4. RAG reliability fixes:
+   - Pluggable embedding provider (Gemini, Ollama e.g. `nomic-embed-text`, or a local sentence-transformers model), chosen in Settings and decoupled from the RCA provider. Collection name includes the model and vector size, so switching providers triggers a re-embed instead of a dimension mismatch.
+   - Surface "RAG unavailable" in the RCA result and UI instead of silently returning no context.
+   - Minimum relevance score (`RAG_MIN_SCORE`, configurable) – hits below it are dropped from the prompt.
+   - Keep Postgres and Qdrant in sync: embed first, then write both (roll back the SQL row if the Qdrant upsert fails); delete Qdrant points when their `knowledge_documents` / source rows are deleted; add a `POST /api/knowledge/reconcile` job that re-embeds rows missing a vector and removes orphaned points.
+5. Refresh `AIOPS_PROJECT_DOCUMENTATION.md` (multi-provider AI, PostgreSQL, new modules, RAG flow).
 
 **Data / API**
-- `app_settings`: scheduler cron expressions, category impact weights.
+- `app_settings`: scheduler cron expressions, category impact weights, embedding provider/model, `RAG_MIN_SCORE`.
+- `knowledge_documents`: `embedding_model`, `embedded_at` (null = missing vector).
 - `GET /api/settings/scheduler`, `PUT /api/settings/scheduler`.
 
 **Done when**
 - `pytest` runs green locally and in CI.
 - Digests and retries fire on schedule without manual API calls.
 - Two errors with the same category and severity get the same priority regardless of AI text length.
+- RAG works with no Gemini key when a local embedding provider is selected.
+- No hit below `RAG_MIN_SCORE` appears in an RCA prompt.
+- After a reset or retention sweep, the reconcile job reports zero orphaned rows or points.
 
 ---
 
@@ -169,7 +182,8 @@ The approval workflow in Phase 10 needs to know *who* approved, so identity come
 1. `LogSource` interface with implementations for local files (existing), Docker, Kubernetes and AWS CloudWatch; later Azure Monitor and Splunk.
 2. `IssueTracker` interface (GitLab existing) with Jira and ServiceNow adapters.
 3. `Notifier` interface (Teams / Email existing) with a Slack adapter.
-4. MCP server exposing platform tools (search logs, get RCA, list incidents, create issue) to external AI assistants.
+4. Run Qdrant as a separate server (Docker service in `docker-compose.yml`, `QDRANT_URL` setting) instead of embedded mode, so multiple backend workers or replicas can share it; keep embedded mode as the local-dev default.
+5. MCP server exposing platform tools (search logs, get RCA, list incidents, create issue) to external AI assistants.
 
 **Done when**
 - A new source, tracker or notifier can be added by implementing one interface and enabling it in Settings.
