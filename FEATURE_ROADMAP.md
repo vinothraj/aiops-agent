@@ -63,7 +63,7 @@ Phases are ordered by dependency – each builds on the one before it.
 The scoring and scheduler fixes change how every later phase behaves, so they come first.
 
 **Objectives**
-1. Commit the PII masking work (`services/rca/pii_masking.py`) with its config flag.
+1. Add test coverage for the PII masking already in place (`services/rca/pii_masking.py`, commit `c9e392b`).
 2. Add a pytest suite covering the parser (multiline stack traces, partial lines, rotation), triage engine, incident matcher and PII masking.
 3. Add a scheduler (APScheduler, started in the FastAPI lifespan) for:
    - Daily operational digest
