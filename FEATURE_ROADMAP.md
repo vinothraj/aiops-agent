@@ -63,18 +63,17 @@ Phases are ordered by dependency – each builds on the one before it.
 The scoring and scheduler fixes change how every later phase behaves, so they come first.
 
 **Objectives**
-1. Add test coverage for the PII masking already in place (`services/rca/pii_masking.py`, commit `c9e392b`).
-2. Add a pytest suite covering the parser (multiline stack traces, partial lines, rotation), triage engine, incident matcher and PII masking.
-3. Add a scheduler (APScheduler, started in the FastAPI lifespan) for:
+1. Add a pytest suite covering the parser (multiline stack traces, partial lines, rotation), triage engine, incident matcher and PII masking (`services/rca/pii_masking.py`).
+2. Add a scheduler (APScheduler, started in the FastAPI lifespan) for:
    - Daily operational digest
    - Weekly reliability insights
    - Failed-notification retry
    - GitLab issue status sync
-4. Replace length-based triage scoring with:
+3. Replace length-based triage scoring with:
    - The AI-reported severity
    - A category-based impact score (e.g. `DATABASE`, `PAYMENT`, `NETWORK` weighted by business criticality, configurable in Settings)
    - Frequency and confidence as today
-5. Refresh `AIOPS_PROJECT_DOCUMENTATION.md` (multi-provider AI, PostgreSQL, new modules).
+4. Refresh `AIOPS_PROJECT_DOCUMENTATION.md` (multi-provider AI, PostgreSQL, new modules).
 
 **Data / API**
 - `app_settings`: scheduler cron expressions, category impact weights.
