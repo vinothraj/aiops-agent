@@ -1,0 +1,614 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Zero Distance AIOps</title>
+<meta name="description" content="Executive brief: turning the internal AIOps platform into a flagship enterprise product for Zero Distance to Customer.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    color-scheme: light;
+    --bg:            #f5f6f4;
+    --bg-plane:      #eef0ec;
+    --surface:       #ffffff;
+    --surface-2:     #eceee9;
+    --text-primary:  #14170f;
+    --text-secondary:#4d5147;
+    --text-muted:    #82867c;
+    --border:        rgba(20,23,15,0.11);
+    --accent:        #0f6e63;
+    --accent-soft:   #dcece7;
+    --accent-2:      #4a3aa7;
+    --accent-2-soft: #e7e3f7;
+    --good:          #0ca30c;
+    --warning:       #b6790a;
+    --critical:      #b3372f;
+    --chip-now:      #0f6e63;
+    --chip-next:     #4a3aa7;
+    --chip-later:    #82867c;
+    --shadow: 0 1px 2px rgba(20,23,15,0.06), 0 8px 24px -12px rgba(20,23,15,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:            #14171b;
+      --bg-plane:      #0e1013;
+      --surface:       #1b1f24;
+      --surface-2:     #23282e;
+      --text-primary:  #f3f4f1;
+      --text-secondary:#c1c5bd;
+      --text-muted:    #868b83;
+      --border:        rgba(255,255,255,0.11);
+      --accent:        #3fc9b8;
+      --accent-soft:   #1b3733;
+      --accent-2:      #9a8ef0;
+      --accent-2-soft: #2a2545;
+      --good:          #43c463;
+      --warning:       #e3ab3d;
+      --critical:      #ec6b62;
+      --chip-now:      #3fc9b8;
+      --chip-next:     #9a8ef0;
+      --chip-later:    #868b83;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:            #14171b;
+    --bg-plane:      #0e1013;
+    --surface:       #1b1f24;
+    --surface-2:     #23282e;
+    --text-primary:  #f3f4f1;
+    --text-secondary:#c1c5bd;
+    --text-muted:    #868b83;
+    --border:        rgba(255,255,255,0.11);
+    --accent:        #3fc9b8;
+    --accent-soft:   #1b3733;
+    --accent-2:      #9a8ef0;
+    --accent-2-soft: #2a2545;
+    --good:          #43c463;
+    --warning:       #e3ab3d;
+    --critical:      #ec6b62;
+    --chip-now:      #3fc9b8;
+    --chip-next:     #9a8ef0;
+    --chip-later:    #868b83;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-inline: 20px;
+  }
+  h1,h2,h3,.display{
+    font-family: "Fraunces", Georgia, serif;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  code, .mono, .tabular{ font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+  a{ color: var(--accent); }
+  p{ color: var(--text-secondary); line-height: 1.62; max-width: 62ch; }
+  .wrap{ max-width: 1080px; margin-inline: auto; }
+  .eyebrow{
+    text-transform: uppercase; letter-spacing: 0.09em; font-size: 12px;
+    font-weight: 600; color: var(--accent);
+  }
+  section{ padding-block: 56px; border-bottom: 1px solid var(--border); }
+  section:last-of-type{ border-bottom: none; }
+  .section-head{ max-width: 720px; margin-bottom: 34px; }
+  .section-head h2{ font-size: clamp(26px,3.4vw,34px); margin: 8px 0 12px; font-weight: 600; }
+
+  /* ---------- nav ---------- */
+  nav.topbar{
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40;
+    background: color-mix(in oklab, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    margin-inline: -20px; padding-inline: 20px;
+  }
+  .topbar-inner{
+    max-width: 1080px; margin-inline: auto;
+    display: flex; align-items: center; gap: 18px;
+    padding-block: 12px; overflow-x: auto;
+  }
+  .brandmark{ display:flex; align-items:center; gap:8px; flex: 0 0 auto; font-weight:600; font-family:"Fraunces",serif; font-size:15px; white-space:nowrap;}
+  .brandmark .dot{ width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+  .navlinks{ display:flex; gap:4px; flex-wrap:nowrap; }
+  .navlinks a{
+    color: var(--text-secondary); text-decoration:none; font-size:13px; font-weight:500;
+    padding:6px 10px; border-radius:7px; white-space:nowrap;
+  }
+  .navlinks a:hover{ background: var(--surface-2); color: var(--text-primary); }
+
+  /* ---------- hero ---------- */
+  .hero{ padding-block: 44px 52px; }
+  .hero h1{ font-size: clamp(32px,5vw,50px); font-weight:600; line-height:1.06; margin: 14px 0 18px; }
+  .hero .lede{ font-size:17px; max-width:60ch; }
+  .hero-meta{ display:flex; gap:22px; flex-wrap:wrap; margin-top:26px; color:var(--text-muted); font-size:13px; }
+  .hero-meta b{ color:var(--text-primary); }
+
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-top:34px; }
+  .kpi{ background:var(--surface); padding:18px 18px 16px; }
+  .kpi .val{ font-family:"Fraunces",serif; font-size:28px; font-weight:600; }
+  .kpi .lbl{ font-size:12.5px; color:var(--text-muted); margin-top:4px; }
+  @media (max-width: 760px){ .kpi-row{ grid-template-columns:repeat(2,1fr); } }
+
+  /* ---------- cards / grid ---------- */
+  .grid{ display:grid; gap:14px; }
+  .grid.cols-4{ grid-template-columns:repeat(4,1fr); }
+  .grid.cols-3{ grid-template-columns:repeat(3,1fr); }
+  .grid.cols-2{ grid-template-columns:repeat(2,1fr); }
+  @media (max-width: 860px){ .grid.cols-4{grid-template-columns:repeat(2,1fr);} .grid.cols-3{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width: 560px){ .grid.cols-4, .grid.cols-3, .grid.cols-2{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:18px; display:flex; flex-direction:column; gap:8px;
+  }
+  .card .icon{
+    width:30px; height:30px; border-radius:8px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .card h3{ font-size:15.5px; font-weight:600; margin:2px 0 0; font-family:"IBM Plex Sans",sans-serif; letter-spacing:0; }
+  .card p{ font-size:13.5px; margin:0; }
+  .card .tag{ font-size:11px; color:var(--text-muted); }
+
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; }
+  .pill.now{ background:color-mix(in oklab, var(--chip-now) 16%, transparent); color:var(--chip-now); }
+  .pill.next{ background:color-mix(in oklab, var(--chip-next) 16%, transparent); color:var(--chip-next); }
+  .pill.later{ background:color-mix(in oklab, var(--chip-later) 20%, transparent); color:var(--text-secondary); }
+  .pill.live{ background:color-mix(in oklab, var(--good) 18%, transparent); color:var(--good); }
+
+  /* ---------- diagrams ---------- */
+  figure{ margin: 20px 0 6px; }
+  figure svg{ width:100%; height:auto; display:block; }
+  figcaption{ font-size:12.5px; color:var(--text-muted); margin-top:10px; max-width:70ch; }
+  .diagram-frame{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px; }
+
+  /* ---------- timeline compare ---------- */
+  .compare{ display:grid; grid-template-columns:1fr; gap:16px; margin-top:26px; }
+  .lane{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+  .lane-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .lane-head h4{ font-family:"IBM Plex Sans"; font-size:13.5px; font-weight:600; margin:0; }
+  .lane-head .dur{ font-family:"IBM Plex Mono"; font-size:12px; color:var(--text-muted); }
+  .steps{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+  .step{ flex:1 1 0; min-width:118px; background:var(--surface-2); border-radius:9px; padding:10px 11px; font-size:12px; color:var(--text-secondary); position:relative; }
+  .step b{ display:block; color:var(--text-primary); font-size:12.5px; margin-bottom:3px; }
+  .lane.after .step{ background:var(--accent-soft); }
+  .lane.after .step b{ color:var(--accent); }
+
+  /* ---------- roadmap ---------- */
+  .roadmap{ display:flex; flex-direction:column; gap:0; margin-top:8px; }
+  .rm-row{ display:grid; grid-template-columns:120px 1fr; gap:20px; padding:18px 0; border-top:1px solid var(--border); }
+  .rm-row:first-child{ border-top:none; }
+  .rm-phase{ display:flex; flex-direction:column; gap:6px; }
+  .rm-num{ font-family:"IBM Plex Mono"; font-size:12px; color:var(--text-muted); }
+  .rm-body h3{ font-size:16px; font-weight:600; margin:0 0 5px; font-family:"IBM Plex Sans"; }
+  .rm-body p{ font-size:13.5px; margin:0 0 8px; }
+  .rm-tags{ display:flex; gap:8px; flex-wrap:wrap; }
+  .tag-chip{ font-size:11px; color:var(--text-muted); border:1px solid var(--border); padding:2px 8px; border-radius:99px; }
+  @media (max-width:640px){ .rm-row{ grid-template-columns:1fr; gap:6px; } }
+
+  /* ---------- chart ---------- */
+  .viz-root{
+    --v-blue-l:#2a78d6; --v-blue-d:#3987e5;
+    --v-orange-l:#eb6834; --v-orange-d:#d95926;
+    --v-ink:var(--text-primary); --v-sub:var(--text-secondary); --v-muted:var(--text-muted); --v-grid:var(--border);
+  }
+  .bar-chart{ display:flex; flex-direction:column; gap:16px; margin-top:22px; }
+  .bar-row{ display:grid; grid-template-columns:168px 1fr 92px; align-items:center; gap:14px; }
+  .bar-row .name{ font-size:13px; color:var(--v-sub); }
+  .bar-track{ background:var(--surface-2); border-radius:6px; height:30px; position:relative; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:6px; display:flex; align-items:center; }
+  .bar-fill.commercial{ background:var(--v-blue-l); }
+  .bar-fill.platform{ background:var(--v-orange-l); }
+  :root:not([data-theme="light"]) .bar-fill.commercial, :root[data-theme="dark"] .bar-fill.commercial{ background:var(--v-blue-d); }
+  :root:not([data-theme="light"]) .bar-fill.platform, :root[data-theme="dark"] .bar-fill.platform{ background:var(--v-orange-d); }
+  .bar-row .value{ font-family:"IBM Plex Mono"; font-size:13px; text-align:right; color:var(--v-ink); }
+  .chart-legend{ display:flex; gap:18px; margin-top:4px; font-size:12px; color:var(--v-sub); }
+  .chart-legend .lg{ display:flex; align-items:center; gap:6px; }
+  .chart-legend .sw{ width:10px; height:10px; border-radius:3px; }
+  .chart-legend .sw.commercial{ background:var(--v-blue-l); } :root:not([data-theme="light"]) .chart-legend .sw.commercial, :root[data-theme="dark"] .chart-legend .sw.commercial{ background:var(--v-blue-d); }
+  .chart-legend .sw.platform{ background:var(--v-orange-l); } :root:not([data-theme="light"]) .chart-legend .sw.platform, :root[data-theme="dark"] .chart-legend .sw.platform{ background:var(--v-orange-d); }
+  .chart-note{ font-size:12px; color:var(--text-muted); margin-top:14px; }
+
+  /* ---------- table ---------- */
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:8px; }
+  th{ text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--border); }
+  td{ padding:12px; border-bottom:1px solid var(--border); color:var(--text-secondary); vertical-align:top; }
+  td.risk{ color:var(--text-primary); font-weight:500; width:22%; }
+  .tbl-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+  .tbl-wrap table{ margin-top:0; }
+  .tbl-wrap th:first-child, .tbl-wrap td:first-child{ padding-left:16px; }
+
+  /* ---------- quote / callout ---------- */
+  .callout{ background:var(--accent-2-soft); border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-top:24px; }
+  .callout p{ color:var(--text-primary); max-width:70ch; font-size:14.5px; }
+  .callout .who{ font-size:12px; color:var(--text-muted); margin-top:8px; }
+
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+  @media (max-width:760px){ .two-col{ grid-template-columns:1fr; } }
+
+  .cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; }
+  .btn{ font-size:13.5px; font-weight:600; padding:10px 18px; border-radius:9px; border:1px solid var(--border); color:var(--text-primary); }
+  .btn.primary{ background:var(--accent); color:#fff; border-color:transparent; }
+
+  footer{ padding-block:34px 60px; color:var(--text-muted); font-size:12px; }
+  ul.plain{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:9px; }
+  ul.plain li{ font-size:13.5px; color:var(--text-secondary); padding-left:16px; position:relative; }
+  ul.plain li::before{ content:"—"; position:absolute; left:0; color:var(--text-muted); }
+</style>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <div class="brandmark"><span class="dot"></span> AIOps Platform</div>
+    <div class="navlinks">
+      <a href="#problem">Problem</a>
+      <a href="#platform">Platform</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#zdc">Zero Distance</a>
+      <a href="#roi">ROI</a>
+      <a href="#cost">Cost</a>
+      <a href="#support">Support</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#risk">Risk</a>
+      <a href="#ask">The Ask</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <section class="hero" id="top">
+    <span class="eyebrow">Executive Brief · Internal Platform → Flagship Product</span>
+    <h1>The incident is already root-caused<br>before the engineer opens the laptop.</h1>
+    <p class="lede">Our AIOps platform already watches five production log estates in real time, files its own GitLab tickets, and writes root-cause reports in business language — not stack traces. This brief makes the case for funding it as a supported product: what it does today, what it's worth, what it costs next to run, and the roadmap that turns it into our answer to Datadog, Dynatrace, and ServiceNow AIOps at a fraction of the spend.</p>
+    <div class="hero-meta">
+      <span>Prepared for: <b>CTO &amp; CEO</b></span>
+      <span>Status: <b>Live in production monitoring</b></span>
+      <span>Ask: <b>Product investment decision</b></span>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="val tabular">1.45M+</div><div class="lbl">log lines ingested and classified in a single monitoring window</div></div>
+      <div class="kpi"><div class="val tabular">5</div><div class="lbl">production &amp; pre-prod log estates watched concurrently, in real time</div></div>
+      <div class="kpi"><div class="val tabular">3</div><div class="lbl">interchangeable AI engines — Claude, Gemini, or a fully on-prem model</div></div>
+      <div class="kpi"><div class="val tabular">0</div><div class="lbl">customer, order or account identifiers ever leave the building to an AI vendor</div></div>
+    </div>
+  </section>
+
+  <section id="problem">
+    <div class="section-head">
+      <span class="eyebrow">01 · The problem this replaces</span>
+      <h2>Every incident starts the same way: a person, alone, grepping.</h2>
+      <p>Across our storefronts, an error can originate in checkout, surface in a tax-compliance integration, and get diagnosed by whoever happens to be on call — reading raw Java stack traces across five separate log shares, by hand, under pressure.</p>
+    </div>
+    <div class="grid cols-3">
+      <div class="card">
+        <div class="icon">⏱</div>
+        <h3>Time-to-understanding is the bottleneck</h3>
+        <p>Not time-to-fix. Most incident time is spent finding <em>which</em> log, on <em>which</em> server, said <em>what</em> — before anyone can even start fixing anything.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🧠</div>
+        <h3>The fix lives in one person's head</h3>
+        <p>The engineer who solved this exact error six months ago is the fastest path to resolution today — if they're reachable, and if they remember.</p>
+      </div>
+      <div class="card">
+        <div class="icon">📉</div>
+        <h3>Leadership sees tickets, not impact</h3>
+        <p>"500 error in <code>DefaultErrorHandler.java:57</code>" means nothing to the business. What failed for the customer, and how many customers, is buried underneath.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="platform">
+    <div class="section-head">
+      <span class="eyebrow">02 · What's already built and running</span>
+      <h2>Eight working screens, one automated pipeline.</h2>
+      <p>This isn't a prototype or a slide-ware concept — it's a running FastAPI + Angular platform with a Postgres-backed data model spanning 18 entities, already monitoring live production log traffic end to end.</p>
+    </div>
+    <div class="grid cols-4">
+      <div class="card"><span class="pill live">Live</span><h3>Real-time log ingestion</h3><p>Watches local and network-share log directories continuously; handles rotation, partial writes, and multiline stack traces automatically.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>AI root cause analysis</h3><p>Every ERROR/FATAL log is auto-analyzed: category, severity, root cause, business impact, and a fix — immediate, short-term, and permanent.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>Auto-triage engine</h3><p>Weighs business impact, technical impact, recurrence frequency, and AI confidence into one risk score and a P1–P4 priority — no human gatekeeping needed.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>Incident deduplication</h3><p>Fingerprints every failure signature; a recurrence reuses the known fix instead of re-spending an AI call on a problem we've already solved.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>Knowledge base (RAG)</h3><p>Every resolved incident is embedded and indexed, so tomorrow's RCA is informed by every incident that came before it.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>GitLab auto-filing</h3><p>Priority incidents become GitLab issues automatically — titled, labeled, and pre-filled with the full analysis. No copy-paste triage.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>Teams &amp; email alerts</h3><p>The right people are notified the moment something is decided to matter, with AI-drafted summaries instead of raw log dumps.</p></div>
+      <div class="card"><span class="pill live">Live</span><h3>Data-safe by design</h3><p>Customer, order, account and site identifiers are masked before any text reaches an external AI vendor — shipped this cycle.</p></div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="section-head">
+      <span class="eyebrow">03 · How it works</span>
+      <h2>One path from a raw log line to a filed, prioritized ticket.</h2>
+      <p>The platform makes exactly one cost-sensitive decision per failure: has this exact problem been seen before? If yes, the fix is reused for free. If no, it earns a fresh AI analysis — and becomes reusable knowledge for next time.</p>
+    </div>
+    <div class="diagram-frame">
+      <figure>
+        <svg viewBox="0 0 900 480" role="img" aria-label="Log sources feed a watcher and parser into a triage engine. The engine checks for a known fingerprint: a match reuses the existing fix at no AI cost, while a new signature is sent to an AI provider with sensitive fields masked. Both paths converge into a prioritized outcome that fans out to GitLab and to Teams and email notifications.">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- connectors -->
+          <g fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.5">
+            <line x1="460" y1="74"  x2="460" y2="110" marker-end="url(#arrow)"/>
+            <line x1="460" y1="154" x2="460" y2="175" marker-end="url(#arrow)"/>
+            <line x1="360" y1="230" x2="300" y2="230" marker-end="url(#arrow)"/>
+            <line x1="560" y1="230" x2="620" y2="230" marker-end="url(#arrow)"/>
+            <line x1="200" y1="265" x2="200" y2="400" marker-end="url(#arrow)"/>
+            <line x1="720" y1="275" x2="720" y2="400" marker-end="url(#arrow)"/>
+            <line x1="200" y1="345" x2="720" y2="345"/>
+          </g>
+          <text x="330" y="220" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">yes</text>
+          <text x="590" y="220" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor" opacity="0.7">no</text>
+          <text x="460" y="337" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.6">prioritized outcome (P1–P4)</text>
+
+          <!-- log sources -->
+          <rect x="360" y="20" width="200" height="54" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+          <text x="460" y="42" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">5 log estates</text>
+          <text x="460" y="59" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">network shares · pre &amp; prod</text>
+
+          <!-- ingestion -->
+          <rect x="360" y="110" width="200" height="44" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+          <text x="460" y="137" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Watcher + Parser</text>
+
+          <!-- decision diamond -->
+          <polygon points="460,175 560,230 460,285 360,230" fill="var(--surface)" stroke="currentColor" stroke-width="1.4" opacity="0.9"/>
+          <text x="460" y="226" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">Known</text>
+          <text x="460" y="240" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">fingerprint?</text>
+
+          <!-- reuse path -->
+          <rect x="100" y="195" width="200" height="70" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+          <text x="200" y="223" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Reuse known fix</text>
+          <text x="200" y="240" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">from the incident group</text>
+          <text x="200" y="255" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--good)">$0 AI spend</text>
+
+          <!-- AI call path -->
+          <rect x="620" y="185" width="200" height="90" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)"/>
+          <text x="720" y="211" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-2)">AI Root Cause</text>
+          <text x="720" y="228" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">Claude · Gemini · Ollama</text>
+          <text x="720" y="243" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">PII masked in transit</text>
+          <text x="720" y="258" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">writes the knowledge base</text>
+
+          <!-- fan out -->
+          <rect x="100" y="400" width="200" height="60" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+          <text x="200" y="425" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">GitLab issue</text>
+          <text x="200" y="441" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">filed automatically</text>
+
+          <rect x="620" y="400" width="200" height="60" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+          <text x="720" y="425" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Teams / Email</text>
+          <text x="720" y="441" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">right people, notified</text>
+        </svg>
+        <figcaption>Every failure is fingerprinted before it's ever sent to an AI provider. A repeat of a known issue is resolved for free from history; a genuinely new one earns a masked, fresh AI analysis and becomes tomorrow's free answer. Either path lands in the same priority gate before fanning out to GitLab and notifications.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="zdc">
+    <div class="section-head">
+      <span class="eyebrow">04 · Strategic fit</span>
+      <h2>This is the mechanism for Zero Distance to Customer.</h2>
+      <p>"Zero Distance" means nothing sits between a customer's problem and the organization's awareness of it. Today that distance is measured in escalation emails and tribal knowledge. Every capability below shortens it directly.</p>
+    </div>
+    <div class="two-col">
+      <div>
+        <ul class="plain">
+          <li><b style="color:var(--text-primary)">Business-language impact, not stack traces</b> — every analysis includes a <code>business_impact</code> field written for a non-engineer, e.g. "customers intermittently could not complete checkout," so leadership sees customer effect, not exception names.</li>
+          <li><b style="color:var(--text-primary)">Detection to diagnosis in seconds, not hours</b> — the moment an error is written to a log file, it's ingested, scored, and (if it matters) root-caused before a human is even paged.</li>
+          <li><b style="color:var(--text-primary)">The complaint is traceable, precisely</b> — real-world example already surfaced in production: a checkout failure traced through <code>blPricingWorkflow</code> to an India tax-compliance API timeout, for a specific order, in one pass.</li>
+          <li><b style="color:var(--text-primary)">Nothing repeats silently</b> — recurring failures are automatically grouped, so "this has happened 12 times this month" is a fact the business has, not a guess.</li>
+        </ul>
+      </div>
+      <div class="callout">
+        <p>"An error occurred during the blPricingWorkflow workflow… Fulfillment Price Exception: Failed to get the token for calling the India tax compliance API — connection timed out."</p>
+        <div class="who">Actual production error, auto-classified P2 and auto-triaged — the kind of failure that used to surface as a vague customer complaint days later.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roi">
+    <div class="section-head">
+      <span class="eyebrow">05 · Productivity impact</span>
+      <h2>What used to take an incident channel now takes an API call.</h2>
+      <p>The clearest way to see the productivity case is to put the two workflows side by side — same failure, same resolution, radically different amount of human time spent finding out what happened.</p>
+    </div>
+    <div class="compare">
+      <div class="lane before">
+        <div class="lane-head"><h4>Manual triage — today's default</h4><span class="dur">typically 2–6 hours to root cause</span></div>
+        <div class="steps">
+          <div class="step"><b>Customer complains</b>or alert fires late</div>
+          <div class="step"><b>On-call searches</b>logs across 5 servers by hand</div>
+          <div class="step"><b>Escalate</b>to whoever last touched this service</div>
+          <div class="step"><b>Reproduce</b>and read stack traces cold</div>
+          <div class="step"><b>Root cause found</b>write it up, open a ticket</div>
+          <div class="step"><b>Fix shipped</b>knowledge stays with that person</div>
+        </div>
+      </div>
+      <div class="lane after">
+        <div class="lane-head"><h4>AIOps-assisted — running today</h4><span class="dur">root cause available in under a minute</span></div>
+        <div class="steps">
+          <div class="step"><b>Error written</b>to any watched log file</div>
+          <div class="step"><b>Auto-ingested</b>parsed &amp; stored in seconds</div>
+          <div class="step"><b>Auto-triaged</b>risk-scored, P1–P4 assigned</div>
+          <div class="step"><b>Auto-diagnosed</b>root cause + business impact</div>
+          <div class="step"><b>Ticket filed</b>GitLab issue, team notified</div>
+          <div class="step"><b>Engineer starts</b>with the answer already in hand</div>
+        </div>
+      </div>
+    </div>
+    <div class="grid cols-3" style="margin-top:26px;">
+      <div class="card"><h3>Engineer time reclaimed</h3><p>Log-spelunking — the least skilled, most time-consuming part of on-call — is fully automated. Engineers spend their time fixing, not searching.</p></div>
+      <div class="card"><h3>Zero redundant AI spend</h3><p>Fingerprint + vector-similarity matching means the 50th occurrence of the same bug costs nothing to diagnose — it's answered from memory.</p></div>
+      <div class="card"><h3>Institutional memory, not tribal</h3><p>The fix no longer leaves when the engineer who found it does. Every resolved incident permanently improves the next analysis via the knowledge base.</p></div>
+    </div>
+  </section>
+
+  <section id="cost">
+    <div class="section-head">
+      <span class="eyebrow">06 · Cost position</span>
+      <h2>Priced like a project, not a platform license.</h2>
+      <p>Commercial AIOps/observability suites price by host, by GB ingested, or by seat — and enterprise contracts for this feature set are routinely six figures a year. This platform's marginal cost is AI-provider usage, which we already control and can drive toward zero.</p>
+    </div>
+    <div class="viz-root">
+      <div class="bar-chart">
+        <div class="bar-row">
+          <span class="name">Typical enterprise<br>AIOps suite<span class="tag" style="display:block;color:var(--text-muted);">Datadog / Dynatrace / ServiceNow-class, illustrative</span></span>
+          <div class="bar-track"><div class="bar-fill commercial" style="width:100%"></div></div>
+          <span class="value tabular">$150K–$1M+/yr</span>
+        </div>
+        <div class="bar-row">
+          <span class="name">This platform<br><span class="tag" style="display:block;color:var(--text-muted);">AI API usage + hosting, dedup-optimized</span></span>
+          <div class="bar-track"><div class="bar-fill platform" style="width:14%"></div></div>
+          <span class="value tabular">low 5-figures/yr</span>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <span class="lg"><span class="sw commercial"></span>Commercial suite (industry-typical range — validate with procurement)</span>
+        <span class="lg"><span class="sw platform"></span>This platform (variable AI spend, further reduced by incident reuse)</span>
+      </div>
+    </div>
+    <p class="chart-note">Figures are directional, not a vendor quote — intended to frame the scale of the opportunity, not replace a procurement comparison. What's firm: our marginal cost is metered AI usage we already have levers to shrink (dedup, local-model fallback), not a fixed license.</p>
+    <div class="grid cols-3" style="margin-top:22px;">
+      <div class="card"><h3>No per-host licensing</h3><p>Costs scale with AI usage on genuinely <em>new</em> problems, not with how many servers or GB of logs we choose to watch.</p></div>
+      <div class="card"><h3>A free fallback exists today</h3><p>The Ollama provider path runs a fully local model — zero external API cost and full data residency for cost-sensitive or restricted workloads.</p></div>
+      <div class="card"><h3>Cost drops as the platform learns</h3><p>The knowledge base means unit cost per incident <em>declines</em> over time — the opposite of a per-seat license that only grows.</p></div>
+    </div>
+  </section>
+
+  <section id="support">
+    <div class="section-head">
+      <span class="eyebrow">07 · Customer support &amp; trust</span>
+      <h2>Faster answers for support, without exposing customer data to a vendor.</h2>
+      <p>Support and SRE both need to trace "what happened to this customer's order" — but that data should never be a line item in a third-party AI vendor's logs. Both are true here simultaneously.</p>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <h3>Support gets answers fast</h3>
+        <p>A support agent investigating an order can be pointed to the exact log entry, service, and — if it triggered an incident — the full root cause and fix status, instead of filing a ticket into engineering and waiting.</p>
+      </div>
+      <div class="card">
+        <h3>The AI never sees the customer</h3>
+        <p>Shipped this cycle: customer, order, account, site and user identifiers, plus email addresses, are automatically redacted from every prompt and embedding sent to Claude, Gemini, or any future provider — while remaining fully intact and searchable in our own systems.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:22px;">
+      <p><code>(site:27379) (customer:1569260120) (order:30060948)</code> → <code>(site:***MASKED***) (customer:***MASKED***) (order:***MASKED***)</code> — masked automatically, in real time, before the request leaves the network. Internal storage and Support tooling are unaffected.</p>
+      <div class="who">This is a genuine differentiator against buying an off-the-shelf AIOps tool: we control exactly what a third party ever sees.</div>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="section-head">
+      <span class="eyebrow">08 · Roadmap</span>
+      <h2>From "explains what happened" to "prevents it happening again."</h2>
+      <p>The platform's own engineering notes already scope the next architectural step (event-driven notifications). The rest of this roadmap is the natural extension of the pipeline that already exists.</p>
+    </div>
+    <div class="roadmap">
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill now">Now</span><span class="rm-num">01</span></div>
+        <div class="rm-body">
+          <h3>Event-driven notification bus</h3>
+          <p>Replace the current synchronous call chain (triage → GitLab → Teams → Email) with a publish/subscribe model, already designed internally, so a slow or failing channel never blocks another. Adds Slack as a first-class channel.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: S–M</span><span class="tag-chip">Reliability</span></div>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill now">Now</span><span class="rm-num">02</span></div>
+        <div class="rm-body">
+          <h3>Customer-impact rollup dashboard</h3>
+          <p>Aggregate open incidents by estimated customer/order reach and revenue-sensitive workflow (checkout, tax, fulfillment) — the single view a CEO or CTO would actually open.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: M</span><span class="tag-chip">Executive visibility</span></div>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill next">Next</span><span class="rm-num">03</span></div>
+        <div class="rm-body">
+          <h3>Predictive / anomaly-based alerting</h3>
+          <p>Move from "an ERROR was logged" to "this service's error rate is trending toward an incident" — catching degradation before it becomes a customer-visible failure.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: L</span><span class="tag-chip">Prevention</span></div>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill next">Next</span><span class="rm-num">04</span></div>
+        <div class="rm-body">
+          <h3>ChatOps: ask the platform directly</h3>
+          <p>"Why did checkout fail for order #X" answered inline in Slack/Teams by the RAG knowledge base, without opening the dashboard — support and on-call get answers where they already work.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: M</span><span class="tag-chip">Support enablement</span></div>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill next">Next</span><span class="rm-num">05</span></div>
+        <div class="rm-body">
+          <h3>Guarded auto-remediation</h3>
+          <p>For known, low-risk, high-confidence incident types (e.g. a documented pool-exhaustion restart), let the platform propose — and, behind an approval gate, execute — the fix it already knows.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: L</span><span class="tag-chip">MTTR → near-zero</span></div>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill later">Later</span><span class="rm-num">06</span></div>
+        <div class="rm-body">
+          <h3>Multi-tenant / multi-brand rollout</h3>
+          <p>Generalize beyond this estate so any business unit can onboard its own log sources, GitLab project, and notification routing without a code change.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: L</span><span class="tag-chip">Platformization</span></div>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="pill later">Later</span><span class="rm-num">07</span></div>
+        <div class="rm-body">
+          <h3>Fine-tuned, fully on-prem model</h3>
+          <p>Train a smaller model on our own resolved-incident history to replace external AI calls entirely for routine cases — near-zero marginal cost and full data residency by default, not by exception.</p>
+          <div class="rm-tags"><span class="tag-chip">Effort: L</span><span class="tag-chip">Cost + compliance</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="risk">
+    <div class="section-head">
+      <span class="eyebrow">09 · Risks &amp; how they're handled</span>
+      <h2>Where this can go wrong, and what already stops it.</h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Risk</th><th>Mitigation already in place / planned</th></tr></thead>
+        <tbody>
+          <tr><td class="risk">AI gets the root cause wrong</td><td>Every analysis carries a confidence score; low-confidence or ambiguous cases route to <code>REQUIRES_HUMAN_REVIEW</code> rather than auto-closing. Nothing auto-remediates today — it recommends.</td></tr>
+          <tr><td class="risk">Sensitive data reaches an AI vendor</td><td>Customer/order/account/site/email data is masked in-flight before any external call, on by default, with a kill switch for edge cases.</td></tr>
+          <tr><td class="risk">Vendor price hikes or an outage</td><td>Provider-agnostic by design — Claude, Gemini, and a fully local Ollama model are already interchangeable with a settings change, not a redeploy.</td></tr>
+          <tr><td class="risk">Alert fatigue from over-notifying</td><td>The triage engine gates GitLab/Teams/Email behind priority thresholds (P2+), not every ERROR line — noise is filtered before it reaches a human.</td></tr>
+          <tr><td class="risk">Single points of failure in the pipeline</td><td>Addressed directly by the Now-phase move to an event-driven bus, so one slow downstream channel can't stall the others.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="ask">
+    <div class="section-head">
+      <span class="eyebrow">10 · The ask</span>
+      <h2>Fund this as a product, not a side project.</h2>
+      <p>The hard part — real-time ingestion at scale, multi-provider AI orchestration, deduplication, auto-triage, and a working UI — is already built and already watching production. What's needed now is the investment to harden and extend it deliberately, rather than it continuing to grow ad hoc.</p>
+    </div>
+    <div class="grid cols-3">
+      <div class="card"><h3>Dedicated ownership</h3><p>A named product owner and 1–2 engineers to execute the "Now" and "Next" roadmap phases on a committed timeline, instead of best-effort.</p></div>
+      <div class="card"><h3>Provisioned AI budget</h3><p>A predictable monthly ceiling for Claude/Gemini usage at full production scale, sized against the cost comparison above — still an order of magnitude below a commercial suite.</p></div>
+      <div class="card"><h3>An executive sponsor</h3><p>Air cover to make this the default incident path org-wide, not an opt-in tool one team happens to use.</p></div>
+    </div>
+    <div class="cta">
+      <span class="btn primary">Approve roadmap Phase 1 (Now)</span>
+      <span class="btn">Request a live walkthrough</span>
+    </div>
+  </section>
+
+  <footer>
+    Prepared from the current state of the AIOps Platform codebase and its live monitoring data. Cost figures are directional estimates for framing, not vendor quotes — validate before external commitments. Internal use.
+  </footer>
+</div>
+
+</body></html>
