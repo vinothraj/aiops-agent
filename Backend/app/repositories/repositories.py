@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select, func, or_, delete, case
+from sqlalchemy import select, func, or_, delete, case, text
 import os
 from app.models.models import LogFile, Log, MonitoredSourceRoot, LogAnalysis, AppSetting
 from app.schemas.schemas import LogFileCreate, LogFileUpdate, LogCreate, MonitoredSourceRootCreate
@@ -176,16 +176,33 @@ class LogRepository:
         total_logs = db.scalar(select(func.count(Log.id))) or 0
         error_logs = db.scalar(select(func.count(Log.id)).where(Log.log_level == "ERROR")) or 0
         warning_logs = db.scalar(select(func.count(Log.id)).where(Log.log_level == "WARNING")) or 0
-        services = db.scalar(select(func.count(func.distinct(Log.service_name)))) or 0
-        instances = db.scalar(select(func.count(func.distinct(Log.instance_id)))) or 0
 
         return {
             "total_logs": total_logs,
             "error_logs": error_logs,
             "warning_logs": warning_logs,
-            "services": services,
-            "instances": instances
+            "services": self._count_distinct_indexed(db, "service_name"),
+            "instances": self._count_distinct_indexed(db, "instance_id")
         }
+
+    @staticmethod
+    def _count_distinct_indexed(db: Session, column: str) -> int:
+        """
+        COUNT(DISTINCT col) for a low-cardinality indexed column. Plain COUNT(DISTINCT)
+        reads every row (tens of seconds at millions of rows); this hops from one
+        distinct value to the next via the index, one lookup per distinct value.
+        `column` is always a fixed internal name, never user input.
+        """
+        sql = text(f"""
+            WITH RECURSIVE vals AS (
+                SELECT MIN({column}) AS v FROM logs
+                UNION ALL
+                SELECT (SELECT MIN({column}) FROM logs WHERE {column} > vals.v)
+                FROM vals WHERE vals.v IS NOT NULL
+            )
+            SELECT COUNT(v) FROM vals
+        """)
+        return db.scalar(sql) or 0
 
 class MonitoredSourceRootRepository:
     def get(self, db: Session, root_id: int) -> Optional[MonitoredSourceRoot]:

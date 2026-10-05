@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.router import api_router
+from app.api.endpoints.stats import warm_stats_cache
 from app.services.watcher import log_watcher_service
 from app.services.log_retention import log_retention_service
 from app.database.session import Base, engine
@@ -34,6 +35,8 @@ async def lifespan(app: FastAPI):
         log_retention_service.start()
     except Exception as e:
         logger.error(f"Error starting Log Retention Service: {str(e)}", exc_info=True)
+
+    warm_stats_cache()
 
     yield
 

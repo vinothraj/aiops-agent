@@ -19,6 +19,9 @@ from app.services.rca import auto_trigger
 logger = logging.getLogger(__name__)
 parser = LogParser()
 
+# Max bytes read from a log file per batch; keeps memory flat on very large files.
+READ_CHUNK_BYTES = 4 * 1024 * 1024
+
 # Matches folder names that identify a single deployment instance rather than a
 # service, e.g. instance01, instance-02, node3, host_4, pod07, prod0353m1 (case-insensitive).
 # Configurable via settings.INSTANCE_FOLDER_PATTERN for environments with different naming.
@@ -173,6 +176,35 @@ class LogFileProcessor:
         return True
 
     @staticmethod
+    def _split_chunk(chunk: bytes, full_chunk: bool, service_name: Optional[str]) -> tuple:
+        """
+        Returns (decoded lines to process, bytes consumed) for a chunk read from
+        the current position. Never consumes a trailing partial line (it's still
+        being written). When more data follows (full_chunk), stops just before
+        the last line that starts a new log entry, so a multiline stack trace is
+        never split from its header line across batches.
+        """
+        end = chunk.rfind(b"\n")
+        if end == -1:
+            if not full_chunk:
+                return [], 0
+            # A single line longer than the chunk size: take it as-is.
+            end = len(chunk) - 1
+
+        raw_lines = chunk[:end + 1].split(b"\n")[:-1]
+        lines = [raw.decode("utf-8", errors="replace") for raw in raw_lines]
+        consumed = end + 1
+
+        if full_chunk and len(lines) > 1:
+            for i in range(len(lines) - 1, 0, -1):
+                if parser.parse_line(lines[i].rstrip("\r"), service_name or ""):
+                    consumed = sum(len(raw) + 1 for raw in raw_lines[:i])
+                    lines = lines[:i]
+                    break
+
+        return lines, consumed
+
+    @staticmethod
     def process_file(file_path: str) -> None:
         """
         Processes new lines of a log file starting from its last processed position.
@@ -216,33 +248,26 @@ class LogFileProcessor:
             # Update status to processing
             log_file_repo.update(db, db_log_file, LogFileUpdate(status="processing"))
 
-            # 3. Read new content
-            with open(file_path, "rb") as f:
-                f.seek(start_pos)
-                content_bytes = f.read()
-                new_pos = f.tell()
+            # 3. Read, parse and save new content in bounded chunks. Position is
+            # committed after every chunk, so memory stays flat on large files and
+            # an interrupted run resumes where it stopped instead of starting over.
+            # The file is opened read-only and closed again before each DB write, so
+            # the handle is held only for the read itself and never blocks the
+            # owning application from writing, rotating or deleting its log.
+            pos = start_pos
+            total_lines = 0
+            while True:
+                with open(file_path, "rb") as f:
+                    f.seek(pos)
+                    chunk = f.read(READ_CHUNK_BYTES)
+                lines, consumed = LogFileProcessor._split_chunk(
+                    chunk, full_chunk=len(chunk) == READ_CHUNK_BYTES, service_name=service_name
+                )
+                if not consumed:
+                    break
 
-            if not content_bytes:
-                log_file_repo.update(db, db_log_file, LogFileUpdate(status="completed"))
-                return
-
-            content = content_bytes.decode("utf-8", errors="replace")
-
-            # 4. Handle partial line writes: back up position to exclude incomplete last line
-            lines_to_process = []
-            if not content.endswith("\n") and not content.endswith("\r"):
-                lines = content.splitlines()
-                if lines:
-                    last_line = lines[-1]
-                    lines_to_process = lines[:-1]
-                    new_pos -= len(last_line.encode("utf-8"))
-            else:
-                lines_to_process = content.splitlines()
-
-            # 5. Parse and save logs
-            if lines_to_process:
                 parsed_logs = parser.parse_lines(
-                    lines_to_process, file_name, file_path,
+                    lines, file_name, file_path,
                     default_service=service_name, instance_id=instance_id
                 )
                 if parsed_logs:
@@ -250,17 +275,18 @@ class LogFileProcessor:
                     for original, db_obj in zip(parsed_logs, created):
                         auto_trigger.maybe_schedule_auto_rca(db_obj.id, original.log_level)
 
-            # 6. Update file info
-            log_file_repo.update(
-                db,
-                db_log_file,
-                LogFileUpdate(
-                    last_processed_position=new_pos,
-                    last_processed_time=datetime.utcnow(),
-                    status="completed"
+                pos += consumed
+                total_lines += len(lines)
+                log_file_repo.update(
+                    db,
+                    db_log_file,
+                    LogFileUpdate(last_processed_position=pos, last_processed_time=datetime.utcnow())
                 )
-            )
-            logger.info(f"Processed {len(lines_to_process)} lines from {file_path}. Position: {start_pos} -> {new_pos}")
+
+            # 4. Mark complete
+            log_file_repo.update(db, db_log_file, LogFileUpdate(status="completed"))
+            if total_lines:
+                logger.info(f"Processed {total_lines} lines from {file_path}. Position: {start_pos} -> {pos}")
 
         except Exception as e:
             logger.error(f"Error processing file {file_path}: {str(e)}", exc_info=True)
@@ -350,6 +376,13 @@ class LogWatcherService:
             logger.error(f"Failed to schedule watchdog observer on {root}: {str(e)}")
 
     def _run_observer(self) -> None:
+        # Catch up on historical modifications here rather than in start(), so a
+        # large backlog (e.g. on a network share) doesn't block API startup.
+        try:
+            self.scan_all_roots()
+        except Exception as e:
+            logger.error(f"Error during initial log directory scan: {str(e)}")
+
         self._handler = LogWatcherHandler()
         self.observer = Observer()
         for root in self._get_active_roots():
@@ -388,10 +421,7 @@ class LogWatcherService:
         if self.running:
             return
 
-        # 1. Catch up on historical modifications
-        self.scan_all_roots()
-
-        # 2. Start watchdog observer in background thread
+        # Catch-up scan and watchdog observer both run in the background thread
         self.running = True
         self.thread = Thread(target=self._run_observer, daemon=True)
         self.thread.start()
