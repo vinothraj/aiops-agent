@@ -1,0 +1,11 @@
+.fs-stat-k { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+.fs-stat-v { font-size: 1.75rem; font-weight: 700; }
+
+.fs-table { --bs-table-bg: transparent; }
+.fs-table th { font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.fs-row { cursor: pointer; }
+.fs-row.expanded td { background: rgba(99, 102, 241, 0.08); }
+.fs-detail td { background: rgba(0, 0, 0, 0.25); }
+.fs-err { max-width: 420px; }
+.fs-branch { max-width: 240px; }
+.fs-empty-icon { font-size: 2.5rem; width: 2.5rem; height: 2.5rem; opacity: 0.5; }

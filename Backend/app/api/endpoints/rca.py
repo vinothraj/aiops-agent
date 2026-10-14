@@ -15,18 +15,24 @@ from app.schemas.schemas import (
     CodebaseCandidateFile,
     AskAiRequest,
     AskAiResponse,
+    CodeFixSuggestion,
+    GitlabFixDefaultsResponse,
+    GitlabFixPushRequest,
+    GitlabFixPushResponse,
 )
 from app.services.rca.rca_agent import rca_agent, LogNotFoundError
 from app.services.rca.codebase_diagnostics import parse_stack_trace_frames, search_codebase_for_candidates
+from app.services.rca.code_fix import build_file_context, parse_fix_response, build_fix
 from app.services.rca.ai_providers import get_ai_suggestion, AiProviderError
+from app.services.gitlab.fix_publisher import get_publish_defaults, publish_fix, FixPublishError
 from app.api.endpoints.settings import TARGET_CODEBASE_PATH_KEY
+from app.models.models import Log
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 MAX_FILES_SENT_TO_AI = 3
-MAX_CHARS_PER_FILE_TO_AI = 6000
 
 
 def _get_configured_codebase_path(db: Session) -> str:
@@ -173,8 +179,10 @@ def ask_ai_for_fix(log_id: int, payload: Optional[AskAiRequest] = None, db: Sess
     """
     Sends the RCA context plus the top candidate files' content to whichever
     AI provider is currently configured (Claude / Gemini / local Ollama) and
-    returns a suggested fix as text/diff for the user to review. Never writes
-    the suggestion back to the target codebase, creates branches, or commits.
+    returns a structured fix plus a unified diff against the current file
+    for the user to review. Never writes the suggestion back to the target
+    codebase -- pushing it to GitLab is a separate, explicit step
+    (POST /{log_id}/gitlab-fix).
     """
     analysis = rca_agent.get_analysis(db, log_id)
     if not analysis:
@@ -182,8 +190,8 @@ def ask_ai_for_fix(log_id: int, payload: Optional[AskAiRequest] = None, db: Sess
     log = analysis.log
 
     requested_paths = payload.candidate_file_paths if payload else None
+    target_path = _get_configured_codebase_path(db)
     if requested_paths:
-        _get_configured_codebase_path(db)  # validate configured/reachable
         candidate_paths = requested_paths
     else:
         diagnosis = _diagnose(db, log_id)
@@ -195,17 +203,28 @@ def ask_ai_for_fix(log_id: int, payload: Optional[AskAiRequest] = None, db: Sess
             detail='No candidate files found to send to the AI. Run "Diagnose in Codebase" first.'
         )
 
+    # Stack-trace line per file name, so each file is sent as a window around
+    # the failing line instead of just its first few KB.
+    frame_lines = {}
+    for f in parse_stack_trace_frames(log.stacktrace, log.message):
+        frame_lines.setdefault(f["file"].lower(), f["line"])
+
     file_sections = []
     files_used = []
+    matched_lines = {}
     for file_path in candidate_paths[:MAX_FILES_SENT_TO_AI]:
+        matched_line = frame_lines.get(os.path.basename(file_path).lower())
         try:
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read(MAX_CHARS_PER_FILE_TO_AI)
+            context = build_file_context(file_path, matched_line)
         except Exception as e:
             logger.warning(f"Could not read {file_path} for AI prompt: {e}")
             continue
-        file_sections.append(f"--- {file_path} ---\n{content}")
+        header = f"--- {file_path} ---"
+        if matched_line:
+            header += f" (stack trace points at line {matched_line})"
+        file_sections.append(f"{header}\n{context}")
         files_used.append(file_path)
+        matched_lines[file_path] = matched_line
 
     if not file_sections:
         raise HTTPException(status_code=400, detail="Candidate files could not be read (unreachable or permission denied).")
@@ -225,25 +244,110 @@ Log message:
 Stack trace:
 {log.stacktrace or "N/A"}
 
-Candidate source files from the application codebase (most likely responsible, based on the stack trace / RCA):
+Candidate source files from the application codebase (most likely responsible, based on the stack trace / RCA).
+Each line is prefixed with its line number and " | " -- that prefix is NOT part of the code:
 
 {chr(10).join(file_sections)}
 
-Based on the above, explain the likely bug in these files and propose a concrete code fix. Where possible, show the fix as a diff or clearly-marked before/after code snippet. Do not assume you can run or apply this change -- just provide your analysis and suggested fix as text for a developer to review.
+Identify the bug and propose a minimal, targeted code fix. Respond with ONLY a JSON object, no other text, in this exact shape:
+{{
+  "explanation": "What is going wrong and why, and how the fix addresses it (plain text, a few sentences).",
+  "fixes": [
+    {{
+      "file_path": "<one of the file paths above, exactly as given>",
+      "rationale": "Why this specific change is needed.",
+      "original": "<the exact current lines to replace, copied verbatim from the file WITHOUT the line-number prefix, including original indentation; 3-15 whole lines>",
+      "replacement": "<the full new code that replaces those lines, with correct indentation>"
+    }}
+  ]
+}}
+Rules: "original" must match the current file character-for-character so it can be located and diffed. Keep each fix as small as possible; use several entries for edits in separate places. Do not include unrelated refactoring. If no code change is appropriate (e.g. it is a configuration or data issue), return an empty "fixes" list and explain why.
 """
 
     try:
-        provider, model, suggestion = get_ai_suggestion(db, prompt)
+        provider, model, raw_text = get_ai_suggestion(db, prompt)
     except AiProviderError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"AI provider call failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=502, detail=f"AI provider call failed: {str(e)}")
 
+    parsed = parse_fix_response(raw_text)
+    if not parsed:
+        # Model ignored the JSON format -- still show what it said.
+        return AskAiResponse(log_id=log_id, provider=provider, model=model, suggestion=raw_text, files_used=files_used)
+
+    fixes = []
+    for item in parsed.get("fixes") or []:
+        if not isinstance(item, dict):
+            continue
+        original = str(item.get("original") or "")
+        replacement = str(item.get("replacement") or "")
+        requested = str(item.get("file_path") or "")
+        # Only ever diff against files we actually sent; match loosely in
+        # case the model shortened or re-slashed the path.
+        file_path = next(
+            (p for p in files_used if os.path.normcase(p) == os.path.normcase(requested)),
+            next((p for p in files_used if os.path.basename(p).lower() == os.path.basename(requested).lower()), None)
+        )
+        if not file_path or not original.strip():
+            continue
+        fix = build_fix(file_path, original, replacement, target_path, matched_lines.get(file_path))
+        fixes.append(CodeFixSuggestion(rationale=item.get("rationale"), **fix))
+
+    combined_patch = "".join(f.diff for f in fixes if f.applied and f.diff) or None
+
     return AskAiResponse(
         log_id=log_id,
         provider=provider,
         model=model,
-        suggestion=suggestion,
-        files_used=files_used
+        suggestion=str(parsed.get("explanation") or ""),
+        files_used=files_used,
+        fixes=fixes,
+        combined_patch=combined_patch,
     )
+
+
+def _get_log(db: Session, log_id: int) -> Log:
+    log = db.get(Log, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found.")
+    return log
+
+
+@router.get("/{log_id}/gitlab-fix/defaults", response_model=GitlabFixDefaultsResponse)
+def get_gitlab_fix_defaults(log_id: int, db: Session = Depends(get_db)):
+    """
+    Pre-fills the "Push fix to GitLab" form: the code repository and base
+    branch (from the target codebase checkout, or the Settings override), a
+    fresh branch name and a commit message.
+    """
+    log = _get_log(db, log_id)
+    return get_publish_defaults(db, log, app_setting_repo.get(db, TARGET_CODEBASE_PATH_KEY))
+
+
+@router.post("/{log_id}/gitlab-fix", response_model=GitlabFixPushResponse)
+def push_fix_to_gitlab(log_id: int, payload: GitlabFixPushRequest, db: Session = Depends(get_db)):
+    """
+    Commits the reviewed AI fixes to a NEW branch in the code repository
+    (created from base_branch) and optionally opens a Draft merge request.
+    The edits are re-applied to the base branch's files on GitLab; if any of
+    them don't match, nothing is created.
+    """
+    log = _get_log(db, log_id)
+    try:
+        return publish_fix(
+            db, log,
+            codebase_path=app_setting_repo.get(db, TARGET_CODEBASE_PATH_KEY),
+            fixes=[f.model_dump() for f in payload.fixes],
+            base_branch=payload.base_branch,
+            branch_name=payload.branch_name,
+            commit_message=payload.commit_message,
+            create_merge_request=payload.create_merge_request,
+            explanation=payload.explanation,
+        )
+    except FixPublishError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Pushing fix for log {log_id} to GitLab failed: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail=f"GitLab request failed: {e}")

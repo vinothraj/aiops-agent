@@ -434,10 +434,154 @@
                             </div>
                             <div class="text-secondary small mb-2">Based on: {{ suggestion.files_used.join(', ') }}</div>
                             <pre class="m-0 text-white" style="font-family: var(--font-body); font-size: 0.85rem; white-space: pre-wrap; line-height: 1.5; max-height: 500px; overflow-y: auto;">{{ suggestion.suggestion }}</pre>
-                            <div class="text-warning small mt-3 d-flex align-items-center gap-2">
+
+                            <!-- Proposed code changes, diffed against the current file -->
+                            <div *ngIf="suggestion.fixes.length" class="mt-3" id="ai-fix-diffs">
+                              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                <span class="fw-semibold text-white small">
+                                  Proposed code changes ({{ suggestion.fixes.length }})
+                                </span>
+                                <div *ngIf="suggestion.combined_patch" class="d-flex gap-2">
+                                  <button mat-stroked-button class="d-flex align-items-center gap-1 btn-sm-mat" (click)="copyPatch(suggestion.combined_patch)" [id]="'btn-copy-patch-' + log.id">
+                                    <mat-icon>content_copy</mat-icon> Copy patch
+                                  </button>
+                                  <button mat-stroked-button class="d-flex align-items-center gap-1 btn-sm-mat" (click)="downloadPatch(log.id, suggestion.combined_patch)" [id]="'btn-download-patch-' + log.id">
+                                    <mat-icon>download</mat-icon> Download .patch
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div *ngFor="let fix of suggestion.fixes" class="fix-card mb-3">
+                                <div class="fix-card-header">
+                                  <mat-icon class="text-info">description</mat-icon>
+                                  <span class="font-mono text-info text-truncate" [title]="fix.file_path">{{ fix.relative_path }}</span>
+                                  <span *ngIf="fix.applied" class="badge bg-success bg-opacity-25 text-success fw-normal">line {{ fix.start_line }}</span>
+                                  <span *ngIf="!fix.applied" class="badge bg-warning bg-opacity-25 text-warning fw-normal"
+                                        title="The AI's 'before' code was not found in the current file, so no exact diff could be computed.">
+                                    not matched to current code
+                                  </span>
+                                </div>
+                                <div *ngIf="fix.rationale" class="text-secondary small px-3 pt-2">{{ fix.rationale }}</div>
+
+                                <!-- Exact diff against the current file -->
+                                <table *ngIf="fix.applied" class="diff-table">
+                                  <tr *ngFor="let row of fixDiffRows.get(fix)" [class]="'diff-' + row.kind">
+                                    <ng-container *ngIf="row.kind === 'hunk'; else codeRow">
+                                      <td colspan="4" class="diff-hunk-text">{{ row.text }}</td>
+                                    </ng-container>
+                                    <ng-template #codeRow>
+                                      <td class="diff-ln">{{ row.oldLine }}</td>
+                                      <td class="diff-ln">{{ row.newLine }}</td>
+                                      <td class="diff-sign">{{ row.kind === 'add' ? '+' : row.kind === 'del' ? '-' : '' }}</td>
+                                      <td class="diff-code">{{ row.text }}</td>
+                                    </ng-template>
+                                  </tr>
+                                </table>
+
+                                <!-- Fallback: AI's before/after when it couldn't be located in the file -->
+                                <div *ngIf="!fix.applied" class="row g-0">
+                                  <div class="col-md-6">
+                                    <div class="diff-pane-label text-danger">Before (as quoted by AI)</div>
+                                    <pre class="diff-pane diff-del">{{ fix.original }}</pre>
+                                  </div>
+                                  <div class="col-md-6">
+                                    <div class="diff-pane-label text-success">After</div>
+                                    <pre class="diff-pane diff-add">{{ fix.replacement }}</pre>
+                                  </div>
+                                </div>
+                              </div>
+                              <div *ngIf="suggestion.combined_patch" class="text-secondary small">
+                                Apply from the codebase root with <code class="text-info">git apply aiops-fix-log-{{ log.id }}.patch</code>
+                              </div>
+                            </div>
+
+                            <!-- Push the reviewed fix to a new GitLab branch -->
+                            <div *ngIf="appliedFixCount(suggestion) > 0" class="gitlab-push mt-3" [id]="'gitlab-push-' + log.id">
+                              <button *ngIf="!gitlabPushForm[log.id] && !gitlabPushResult[log.id]" mat-flat-button color="primary"
+                                      class="d-flex align-items-center gap-1" (click)="openGitlabPush(log.id)" [id]="'btn-gitlab-push-' + log.id">
+                                <mat-icon>call_split</mat-icon> Push fix to GitLab branch
+                              </button>
+
+                              <div *ngIf="gitlabPushForm[log.id] as form" class="gitlab-push-form">
+                                <div class="fw-semibold text-white small mb-2 d-flex align-items-center gap-2">
+                                  <mat-icon class="text-info">call_split</mat-icon>
+                                  Commit {{ appliedFixCount(suggestion) }} matched change(s) to a new branch
+                                  <span *ngIf="form.project" class="font-mono text-info">in {{ form.project }}</span>
+                                </div>
+                                <div *ngIf="!form.configured" class="text-warning small mb-2">GitLab is not configured — set it up in Settings → GitLab Integration.</div>
+                                <div *ngIf="form.configured && !form.project" class="text-warning small mb-2">
+                                  Could not detect the code repository from the target codebase — set it in Settings → GitLab Integration.
+                                </div>
+                                <div class="row g-2">
+                                  <div class="col-md-6">
+                                    <label class="form-label small text-secondary mb-1" [for]="'gl-base-' + log.id">Base branch</label>
+                                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25 font-mono"
+                                           [id]="'gl-base-' + log.id" [(ngModel)]="form.base_branch" placeholder="e.g. develop">
+                                  </div>
+                                  <div class="col-md-6">
+                                    <label class="form-label small text-secondary mb-1" [for]="'gl-branch-' + log.id">New branch</label>
+                                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25 font-mono"
+                                           [id]="'gl-branch-' + log.id" [(ngModel)]="form.branch_name">
+                                  </div>
+                                  <div class="col-12">
+                                    <label class="form-label small text-secondary mb-1" [for]="'gl-msg-' + log.id">Commit message</label>
+                                    <textarea rows="2" class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25"
+                                              [id]="'gl-msg-' + log.id" [(ngModel)]="form.commit_message"></textarea>
+                                  </div>
+                                </div>
+                                <div class="form-check mt-2">
+                                  <input class="form-check-input" type="checkbox" [id]="'gl-mr-' + log.id" [(ngModel)]="form.create_merge_request">
+                                  <label class="form-check-label small text-white" [for]="'gl-mr-' + log.id">
+                                    Open a Draft merge request into the base branch
+                                  </label>
+                                </div>
+                                <div *ngIf="form.linked_issue_url" class="text-secondary small mt-1">
+                                  The linked incident issue will get a comment with the link.
+                                </div>
+                                <div class="text-secondary small mt-2">
+                                  The edits are re-applied to the base branch's files on GitLab. If any of them no longer match, nothing is pushed.
+                                  Changes not matched to the current code are skipped.
+                                </div>
+                                <div class="d-flex gap-2 mt-3">
+                                  <button mat-flat-button color="primary" class="d-flex align-items-center gap-1"
+                                          [disabled]="pushingToGitlab[log.id] || !form.configured || !form.project || !form.base_branch.trim() || !form.branch_name.trim() || !form.commit_message.trim()"
+                                          (click)="pushFixToGitlab(log.id)" [id]="'btn-gitlab-push-confirm-' + log.id">
+                                    <mat-icon *ngIf="!pushingToGitlab[log.id]">cloud_upload</mat-icon>
+                                    <mat-spinner *ngIf="pushingToGitlab[log.id]" diameter="18"></mat-spinner>
+                                    Create branch &amp; commit
+                                  </button>
+                                  <button mat-stroked-button [disabled]="pushingToGitlab[log.id]" (click)="cancelGitlabPush(log.id)">Cancel</button>
+                                </div>
+                              </div>
+
+                              <div *ngIf="gitlabPushError[log.id]" class="alert alert-danger py-2 small mt-2 mb-0">{{ gitlabPushError[log.id] }}</div>
+
+                              <div *ngIf="gitlabPushResult[log.id] as res" class="gitlab-push-result">
+                                <div class="d-flex align-items-center gap-2 text-success fw-semibold small mb-1">
+                                  <mat-icon>check_circle</mat-icon>
+                                  Pushed {{ res.files.length }} file(s) to <span class="font-mono">{{ res.project }}</span>
+                                </div>
+                                <div class="small text-secondary">
+                                  Branch <a class="font-mono text-info" [href]="res.branch_url" target="_blank" rel="noopener">{{ res.branch }}</a>
+                                  from <span class="font-mono">{{ res.base_branch }}</span> ·
+                                  commit <a class="font-mono text-info" [href]="res.commit_url" target="_blank" rel="noopener">{{ res.commit_sha.slice(0, 8) }}</a>
+                                  <ng-container *ngIf="res.merge_request_url"> ·
+                                    <a class="text-info" [href]="res.merge_request_url" target="_blank" rel="noopener">Draft merge request</a>
+                                  </ng-container>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div *ngIf="!gitlabPushResult[log.id]" class="text-warning small mt-3 d-flex align-items-center gap-2">
                               <mat-icon style="font-size: 1.1rem; width: auto; height: auto;">info</mat-icon>
                               This is a suggestion for review only — nothing has been written to the codebase.
                             </div>
+                          </div>
+
+                          <!-- Deep fix: hand off to Claude Code with tracking -->
+                          <div class="mt-3 pt-3 border-top border-secondary border-opacity-10" id="claude-fix-section">
+                            <h6 class="text-white fw-bold mb-2">Fix with Claude Code</h6>
+                            <app-fix-session-panel [logId]="log.id" [aiHypothesis]="aiSuggestion[log.id]?.suggestion"></app-fix-session-panel>
                           </div>
                         </div>
                       </div>

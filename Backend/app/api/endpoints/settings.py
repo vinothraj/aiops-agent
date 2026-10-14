@@ -12,6 +12,7 @@ from app.repositories.repositories import app_setting_repo
 from app.schemas.schemas import (
     AppSettingResponse, TargetCodebasePathUpdate, AiProviderSettingsResponse, AiProviderSettingsUpdate,
     LogRetentionSettingsResponse, LogRetentionSettingsUpdate, GitlabSettingsResponse, GitlabSettingsUpdate,
+    AutoFixSettingsResponse, AutoFixSettingsUpdate,
 )
 from app.services.rca.ai_providers import (
     get_provider_config,
@@ -32,6 +33,10 @@ from app.services.gitlab.gitlab_agent import (
     GITLAB_URL_SETTING,
     GITLAB_TOKEN_SETTING,
     GITLAB_PROJECT_ID_SETTING,
+)
+from app.services.gitlab.fix_publisher import GITLAB_CODE_PROJECT_SETTING, GITLAB_FIX_BASE_BRANCH_SETTING, resolve_code_project
+from app.services.remediation.fix_sessions import (
+    AUTO_FIX_ENABLED_KEY, AUTO_FIX_MIN_PRIORITY_KEY, PRIORITY_RANK, get_auto_fix_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -186,6 +191,22 @@ def set_log_retention_settings(payload: LogRetentionSettingsUpdate, db: Session 
     return LogRetentionSettingsResponse(enabled=payload.enabled, retention_hours=RETENTION_HOURS)
 
 
+def _gitlab_settings_response(db: Session) -> GitlabSettingsResponse:
+    config = get_gitlab_config(db)
+    try:
+        detected = resolve_code_project(db, app_setting_repo.get(db, TARGET_CODEBASE_PATH_KEY))["detected_project"]
+    except Exception as e:  # unreachable share etc. -- detection is informational only
+        logger.warning(f"Could not detect code repository from target codebase: {e}")
+        detected = None
+    return GitlabSettingsResponse(
+        url=config["url"] or "",
+        project_id=str(config["project_id"] or ""),
+        configured=is_gitlab_configured(db),
+        code_project=app_setting_repo.get(db, GITLAB_CODE_PROJECT_SETTING) or "",
+        detected_code_project=detected,
+    )
+
+
 @router.get("/gitlab", response_model=GitlabSettingsResponse)
 def get_gitlab_settings(db: Session = Depends(get_db)):
     """
@@ -193,12 +214,7 @@ def get_gitlab_settings(db: Session = Depends(get_db)):
     whether a private token is set -- never the token itself). Checks both a
     Settings-stored value and the .env fallback.
     """
-    config = get_gitlab_config(db)
-    return GitlabSettingsResponse(
-        url=config["url"] or "",
-        project_id=str(config["project_id"] or ""),
-        configured=is_gitlab_configured(db),
-    )
+    return _gitlab_settings_response(db)
 
 
 @router.put("/gitlab", response_model=GitlabSettingsResponse)
@@ -217,13 +233,39 @@ def set_gitlab_settings(payload: GitlabSettingsUpdate, db: Session = Depends(get
         app_setting_repo.set(db, GITLAB_PROJECT_ID_SETTING, payload.project_id.strip())
     if payload.private_token is not None:
         app_setting_repo.set(db, GITLAB_TOKEN_SETTING, payload.private_token.strip())
+    if payload.code_project is not None:
+        app_setting_repo.set(db, GITLAB_CODE_PROJECT_SETTING, payload.code_project.strip())
 
-    config = get_gitlab_config(db)
-    return GitlabSettingsResponse(
-        url=config["url"] or "",
-        project_id=str(config["project_id"] or ""),
-        configured=is_gitlab_configured(db),
+    return _gitlab_settings_response(db)
+
+
+def _auto_fix_response(db: Session) -> AutoFixSettingsResponse:
+    config = get_auto_fix_config(db)
+    return AutoFixSettingsResponse(
+        enabled=config["enabled"],
+        min_priority=config["min_priority"],
+        base_branch=app_setting_repo.get(db, GITLAB_FIX_BASE_BRANCH_SETTING) or "",
     )
+
+
+@router.get("/auto-fix", response_model=AutoFixSettingsResponse)
+def get_auto_fix_settings(db: Session = Depends(get_db)):
+    """Auto-Fix: whether triage queues Claude fix sessions, from which priority up, and the default base branch."""
+    return _auto_fix_response(db)
+
+
+@router.put("/auto-fix", response_model=AutoFixSettingsResponse)
+def set_auto_fix_settings(payload: AutoFixSettingsUpdate, db: Session = Depends(get_db)):
+    if payload.min_priority is not None:
+        priority = payload.min_priority.strip().upper()
+        if priority not in PRIORITY_RANK:
+            raise HTTPException(status_code=400, detail="min_priority must be one of P1, P2, P3, P4.")
+        app_setting_repo.set(db, AUTO_FIX_MIN_PRIORITY_KEY, priority)
+    if payload.enabled is not None:
+        app_setting_repo.set(db, AUTO_FIX_ENABLED_KEY, "true" if payload.enabled else "false")
+    if payload.base_branch is not None:
+        app_setting_repo.set(db, GITLAB_FIX_BASE_BRANCH_SETTING, payload.base_branch.strip())
+    return _auto_fix_response(db)
 
 
 @router.post("/database/reset")

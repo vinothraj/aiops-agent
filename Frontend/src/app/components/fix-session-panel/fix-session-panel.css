@@ -1,0 +1,59 @@
+.fsp mat-icon { font-size: 1.15rem; width: 1.15rem; height: 1.15rem; }
+
+.btn-claude {
+  background: linear-gradient(135deg, #d97757 0%, #c15f3c 100%) !important;
+  color: #fff !important;
+}
+
+.fsp-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.fsp-brief {
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin: 0;
+}
+
+/* Stepper */
+.fsp-steps { display: flex; align-items: center; overflow-x: auto; padding-bottom: 2px; }
+.fsp-step { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; }
+.fsp-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+.fsp-label { font-size: 0.7rem; color: #94a3b8; white-space: nowrap; }
+.fsp-step.done .fsp-dot, .fsp-step.done-all .fsp-dot { background: #22c55e; border-color: #22c55e; }
+.fsp-step.current .fsp-dot { background: #6366f1; border-color: #a5b4fc; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+.fsp-step.current .fsp-label { color: #fff; font-weight: 600; }
+.fsp-line { flex: 1; height: 2px; min-width: 16px; background: rgba(255, 255, 255, 0.12); margin-bottom: 18px; }
+.fsp-line.done { background: #22c55e; }
+
+.fsp-k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-bottom: 2px; }
+.fsp-v { font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap; }
+
+/* Timeline */
+.fsp-timeline { max-height: 240px; overflow-y: auto; }
+.fsp-event {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+.fsp-event-time { color: #64748b; font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; }
+.fsp-event-src { color: #94a3b8; font-size: 0.72rem; }
+.fsp-event-msg { color: #e2e8f0; white-space: pre-wrap; }

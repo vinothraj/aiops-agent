@@ -164,12 +164,25 @@ export interface DiagnoseCodebaseResponse {
   truncated: boolean;
 }
 
+export interface CodeFixSuggestion {
+  file_path: string;
+  relative_path: string;
+  rationale?: string;
+  original: string;
+  replacement: string;
+  applied: boolean;  // false when `original` wasn't found in the current file
+  start_line?: number;
+  diff?: string;     // unified diff against the current file
+}
+
 export interface AskAiResponse {
   log_id: number;
   provider: string;
   model: string;
   suggestion: string;
   files_used: string[];
+  fixes: CodeFixSuggestion[];
+  combined_patch?: string;
 }
 
 export interface AiProviderSettingsResponse {
@@ -190,7 +203,89 @@ export interface GitlabSettingsResponse {
   url: string;
   project_id: string;
   configured: boolean;
+  code_project: string;                    // repository AI fixes are pushed to; '' = auto-detect
+  detected_code_project?: string | null;   // from the target codebase's origin remote
 }
+
+export interface GitlabFixDefaults {
+  configured: boolean;
+  project?: string | null;
+  base_branch?: string | null;
+  branch_name: string;
+  commit_message: string;
+  linked_issue_url?: string | null;
+}
+
+export interface GitlabFixPushRequest {
+  fixes: { file_path: string; relative_path: string; original: string; replacement: string; start_line?: number }[];
+  base_branch: string;
+  branch_name: string;
+  commit_message: string;
+  create_merge_request: boolean;
+  explanation?: string;
+}
+
+export interface GitlabFixPushResponse {
+  project: string;
+  base_branch: string;
+  branch: string;
+  branch_url: string;
+  commit_sha: string;
+  commit_url: string;
+  merge_request_url?: string | null;
+  files: string[];
+  diff: string;
+}
+
+export type FixSessionStatus = 'queued' | 'in_progress' | 'fix_ready' | 'pushed' | 'completed' | 'no_code_change' | 'failed' | 'cancelled';
+
+export interface FixSessionEvent {
+  id: number;
+  status: FixSessionStatus;
+  message?: string | null;
+  source: 'aiops' | 'agent' | 'user';
+  created_at: string;
+}
+
+export interface FixSession {
+  id: number;
+  log_id: number;
+  incident_decision_id?: number | null;
+  trigger: 'manual' | 'auto';
+  executor: string;
+  priority?: string | null;
+  status: FixSessionStatus;
+  gitlab_project?: string | null;
+  base_branch?: string | null;
+  branch?: string | null;
+  commit_sha?: string | null;
+  merge_request_url?: string | null;
+  summary?: string | null;
+  root_cause_confirmed?: string | null;
+  files_changed: string[];
+  tests_summary?: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  service_name?: string | null;
+  log_level?: string | null;
+  log_message?: string | null;
+  events: FixSessionEvent[];
+}
+
+export interface FixSessionBrief {
+  session: FixSession;
+  brief: string;  // Markdown prompt for Claude Code, embeds a fresh callback token
+}
+
+export interface AutoFixSettings {
+  enabled: boolean;
+  min_priority: string;
+  base_branch: string;
+}
+
+export const FIX_SESSION_TERMINAL: FixSessionStatus[] = ['completed', 'no_code_change', 'failed', 'cancelled'];
 
 @Injectable({
   providedIn: 'root'
@@ -419,7 +514,7 @@ export class ApiService {
     return this.http.get<GitlabSettingsResponse>(`${this.baseUrl}/settings/gitlab`);
   }
 
-  setGitlabSettings(payload: { url?: string; project_id?: string; private_token?: string }): Observable<GitlabSettingsResponse> {
+  setGitlabSettings(payload: { url?: string; project_id?: string; private_token?: string; code_project?: string }): Observable<GitlabSettingsResponse> {
     return this.http.put<GitlabSettingsResponse>(`${this.baseUrl}/settings/gitlab`, payload);
   }
 
@@ -432,6 +527,49 @@ export class ApiService {
   askAiForFix(logId: number, candidateFilePaths?: string[]): Observable<AskAiResponse> {
     const body = candidateFilePaths ? { candidate_file_paths: candidateFilePaths } : {};
     return this.http.post<AskAiResponse>(`${this.baseUrl}/rca/${logId}/ask-ai`, body);
+  }
+
+  getGitlabFixDefaults(logId: number): Observable<GitlabFixDefaults> {
+    return this.http.get<GitlabFixDefaults>(`${this.baseUrl}/rca/${logId}/gitlab-fix/defaults`);
+  }
+
+  // ─── Fix sessions (Debug with Claude) ───────────────────────────────────
+
+  createFixSession(logId: number, aiHypothesis?: string, baseBranch?: string): Observable<FixSessionBrief> {
+    return this.http.post<FixSessionBrief>(`${this.baseUrl}/fix-sessions`, {
+      log_id: logId, ai_hypothesis: aiHypothesis || null, base_branch: baseBranch || null
+    });
+  }
+
+  getFixSessions(status?: string, logId?: number): Observable<FixSession[]> {
+    let params = new HttpParams();
+    if (status) params = params.set('status', status);
+    if (logId != null) params = params.set('log_id', logId);
+    return this.http.get<FixSession[]>(`${this.baseUrl}/fix-sessions`, { params });
+  }
+
+  getFixSession(id: number): Observable<FixSession> {
+    return this.http.get<FixSession>(`${this.baseUrl}/fix-sessions/${id}`);
+  }
+
+  reissueFixBrief(id: number): Observable<FixSessionBrief> {
+    return this.http.post<FixSessionBrief>(`${this.baseUrl}/fix-sessions/${id}/brief`, {});
+  }
+
+  cancelFixSession(id: number, reason?: string): Observable<FixSession> {
+    return this.http.post<FixSession>(`${this.baseUrl}/fix-sessions/${id}/cancel`, { reason: reason || null });
+  }
+
+  getAutoFixSettings(): Observable<AutoFixSettings> {
+    return this.http.get<AutoFixSettings>(`${this.baseUrl}/settings/auto-fix`);
+  }
+
+  setAutoFixSettings(payload: Partial<AutoFixSettings>): Observable<AutoFixSettings> {
+    return this.http.put<AutoFixSettings>(`${this.baseUrl}/settings/auto-fix`, payload);
+  }
+
+  pushFixToGitlab(logId: number, payload: GitlabFixPushRequest): Observable<GitlabFixPushResponse> {
+    return this.http.post<GitlabFixPushResponse>(`${this.baseUrl}/rca/${logId}/gitlab-fix`, payload);
   }
 }
 

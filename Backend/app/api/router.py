@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import logs, stats, sources, rca, knowledge, incidents, gitlab, notifications, incident_groups, settings
+from app.api.endpoints import logs, stats, sources, rca, knowledge, incidents, gitlab, notifications, incident_groups, settings, fix_sessions
 
 api_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_router.include_router(gitlab.router, prefix="/gitlab", tags=["gitlab"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(incident_groups.router, prefix="/incident-groups", tags=["incident-groups"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+api_router.include_router(fix_sessions.router, prefix="/fix-sessions", tags=["fix-sessions"])

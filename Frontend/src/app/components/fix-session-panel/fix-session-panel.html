@@ -1,0 +1,133 @@
+<div class="fsp" [id]="'fix-session-panel-' + (session?.id ?? logId)">
+
+  <!-- No session yet -->
+  <div *ngIf="!session" class="d-flex align-items-center gap-3 flex-wrap">
+    <button mat-flat-button class="btn-claude d-flex align-items-center gap-1" [disabled]="loading" (click)="start()"
+            [id]="'btn-debug-claude-' + logId">
+      <mat-icon *ngIf="!loading">terminal</mat-icon>
+      <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
+      Debug with Claude
+    </button>
+    <span class="text-secondary small">
+      Opens a tracked fix session and a ready-to-paste brief for Claude Code, which can explore the whole repository,
+      build, test and report its progress back here.
+    </span>
+  </div>
+
+  <ng-container *ngIf="session as s">
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+      <mat-icon class="text-info">terminal</mat-icon>
+      <span class="fw-semibold text-white">Fix session #{{ s.id }}</span>
+      <span class="badge bg-opacity-25 fw-normal" [ngClass]="statusClass[s.status]">{{ labels[s.status] }}</span>
+      <span *ngIf="s.priority" class="badge bg-warning bg-opacity-25 text-warning fw-normal">{{ s.priority }}</span>
+      <span class="badge bg-dark border border-secondary border-opacity-25 text-secondary fw-normal">
+        {{ s.trigger === 'auto' ? 'Auto-Fix' : 'Manual' }}
+      </span>
+      <span class="text-secondary small ms-auto">updated {{ s.updated_at | date:'MMM d, HH:mm:ss' }}</span>
+    </div>
+
+    <!-- Stepper -->
+    <div class="fsp-steps mb-3">
+      <ng-container *ngFor="let step of steps; let i = index">
+        <div class="fsp-step" [class.done]="stepIndex >= 0 && i < stepIndex" [class.current]="i === stepIndex"
+             [class.done-all]="s.status === 'completed'">
+          <span class="fsp-dot"></span>
+          <span class="fsp-label">{{ step.label }}</span>
+        </div>
+        <div *ngIf="i < steps.length - 1" class="fsp-line" [class.done]="stepIndex >= 0 && i < stepIndex"></div>
+      </ng-container>
+    </div>
+    <div *ngIf="stepIndex < 0" class="small mb-2"
+         [ngClass]="s.status === 'failed' ? 'text-danger' : 'text-secondary'">
+      Ended as <strong>{{ labels[s.status] }}</strong>.
+    </div>
+
+    <!-- Hand-off -->
+    <div *ngIf="!isTerminal" class="fsp-box mb-3">
+      <ng-container *ngIf="brief; else noBrief">
+        <ol class="small text-white mb-2 ps-3">
+          <li>Copy the brief.</li>
+          <li>In Claude desktop, start a <strong>Code</strong> session on the repository
+            <span *ngIf="s.gitlab_project">(<span class="font-mono text-info">{{ s.gitlab_project }}</span>)</span>
+            and paste it.</li>
+          <li>Claude reports progress here automatically. This panel updates live.</li>
+        </ol>
+        <div class="d-flex gap-2 flex-wrap">
+          <button mat-flat-button class="btn-claude d-flex align-items-center gap-1" (click)="copyBrief()" [id]="'btn-copy-brief-' + s.id">
+            <mat-icon>{{ copied ? 'check' : 'content_copy' }}</mat-icon> {{ copied ? 'Copied' : 'Copy brief' }}
+          </button>
+          <button mat-stroked-button class="d-flex align-items-center gap-1" (click)="downloadBrief()">
+            <mat-icon>download</mat-icon> Download .md
+          </button>
+          <button mat-stroked-button class="d-flex align-items-center gap-1" (click)="showBrief = !showBrief">
+            <mat-icon>{{ showBrief ? 'visibility_off' : 'visibility' }}</mat-icon> {{ showBrief ? 'Hide' : 'Preview' }}
+          </button>
+        </div>
+        <pre *ngIf="showBrief" class="fsp-brief mt-2">{{ brief }}</pre>
+        <div class="text-secondary small mt-2">
+          The brief contains a one-time callback token for this session. Customer/order IDs and emails are masked.
+        </div>
+      </ng-container>
+      <ng-template #noBrief>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button mat-flat-button class="btn-claude d-flex align-items-center gap-1" [disabled]="loading" (click)="start()"
+                  [id]="'btn-get-brief-' + s.id">
+            <mat-icon *ngIf="!loading">terminal</mat-icon>
+            <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
+            {{ s.status === 'queued' ? 'Get Claude brief' : 'Re-issue Claude brief' }}
+          </button>
+          <span class="text-secondary small">
+            Issuing a brief revokes the token in any earlier copy.
+          </span>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Results reported by Claude -->
+    <div *ngIf="s.root_cause_confirmed || s.summary || s.files_changed.length || s.tests_summary || s.branch" class="fsp-box mb-3">
+      <div *ngIf="s.root_cause_confirmed" class="mb-2">
+        <div class="fsp-k">Confirmed root cause</div>
+        <div class="fsp-v">{{ s.root_cause_confirmed }}</div>
+      </div>
+      <div *ngIf="s.summary" class="mb-2">
+        <div class="fsp-k">Fix summary</div>
+        <div class="fsp-v">{{ s.summary }}</div>
+      </div>
+      <div *ngIf="s.files_changed.length" class="mb-2">
+        <div class="fsp-k">Files changed</div>
+        <div class="d-flex flex-wrap gap-1">
+          <span *ngFor="let f of s.files_changed" class="badge bg-dark border border-secondary border-opacity-25 font-mono fw-normal text-info">{{ f }}</span>
+        </div>
+      </div>
+      <div *ngIf="s.tests_summary" class="mb-2">
+        <div class="fsp-k">Verification</div>
+        <div class="fsp-v">{{ s.tests_summary }}</div>
+      </div>
+      <div *ngIf="s.branch" class="small text-secondary">
+        Branch <span class="font-mono text-info">{{ s.branch }}</span>
+        <span *ngIf="s.base_branch"> from <span class="font-mono">{{ s.base_branch }}</span></span>
+        <span *ngIf="s.commit_sha"> · commit <span class="font-mono">{{ s.commit_sha.slice(0, 8) }}</span></span>
+        <ng-container *ngIf="s.merge_request_url"> ·
+          <a class="text-info" [href]="s.merge_request_url" target="_blank" rel="noopener">Merge request</a>
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div *ngIf="s.events.length" class="fsp-timeline">
+      <div *ngFor="let e of s.events.slice().reverse()" class="fsp-event">
+        <span class="fsp-event-time">{{ e.created_at | date:'MMM d, HH:mm:ss' }}</span>
+        <span class="badge bg-opacity-25 fw-normal" [ngClass]="statusClass[e.status]">{{ labels[e.status] }}</span>
+        <span class="fsp-event-src">{{ e.source === 'agent' ? 'Claude' : e.source === 'user' ? 'You' : 'AIOps' }}</span>
+        <span class="fsp-event-msg">{{ e.message }}</span>
+      </div>
+    </div>
+
+    <div *ngIf="!isTerminal" class="d-flex justify-content-end mt-2">
+      <button mat-button class="text-danger" (click)="cancel()" [id]="'btn-cancel-fix-' + s.id">Cancel session</button>
+    </div>
+  </ng-container>
+
+  <div *ngIf="error" class="alert alert-danger py-2 small mt-2 mb-0">{{ error }}</div>
+</div>

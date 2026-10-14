@@ -43,7 +43,13 @@ class Settings(BaseSettings):
 
     # Claude Configuration
     CLAUDE_API_KEY: Optional[str] = None
-    CLAUDE_MODEL: str = "claude-sonnet-4"
+    CLAUDE_MODEL: str = "claude-sonnet-5-5"
+
+    # Public base URL of this backend, as reachable from the developer's
+    # machine running Claude Code (used for fix-session callback URLs in the
+    # brief). Unset = derive it from the incoming request, which is only
+    # right when the backend is reached directly (no reverse proxy).
+    AIOPS_PUBLIC_URL: Optional[str] = None
 
     # Qdrant Configuration
     QDRANT_PATH: str = "qdrant_data"

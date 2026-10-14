@@ -196,6 +196,16 @@
                [placeholder]="gitlab?.configured ? 'Configured — leave blank to keep current' : 'glpat-...'"
                [(ngModel)]="gitlabTokenInput" autocomplete="new-password">
       </div>
+      <div class="col-12 col-md-8">
+        <label for="gitlab-code-project-input" class="form-label text-secondary fw-semibold small">Code Repository (for AI fix branches)</label>
+        <input type="text" id="gitlab-code-project-input" class="form-control bg-dark text-white border-secondary border-opacity-25 font-mono"
+               [placeholder]="gitlab?.detected_code_project ? 'Auto-detected: ' + gitlab?.detected_code_project : 'group/project or project ID'"
+               [(ngModel)]="gitlabCodeProjectInput">
+        <div class="form-text text-secondary small">
+          Where "Push fix to GitLab branch" commits. Leave blank to use the target codebase's <code class="text-info">origin</code> remote.
+          The token needs the <code class="text-info">api</code> scope and Developer access to this repository.
+        </div>
+      </div>
     </div>
 
     <div class="row g-2" id="gitlab-actions">
@@ -213,6 +223,58 @@
       GitLab: <span [ngClass]="gitlab.configured ? 'text-success' : 'text-warning'">{{ gitlab.configured ? 'configured' : 'not set' }}</span>
       <button *ngIf="gitlab.configured" class="btn btn-link btn-sm text-danger p-0" [disabled]="gitlabSaving" (click)="clearGitlabToken()" id="btn-clear-gitlab-token">Clear token</button>
     </div>
+  </div>
+
+  <!-- Claude Fix Sessions / Auto-Fix -->
+  <div class="glass-panel p-4 mb-4" id="auto-fix-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <mat-icon class="text-primary">terminal</mat-icon>
+      <h5 class="text-white m-0">Claude Fix Sessions</h5>
+    </div>
+    <p class="text-secondary small mb-3">
+      Defaults for <strong class="text-white">Debug with Claude</strong> and the GitLab push form, and whether triage queues fix
+      sessions automatically. Track every session on the <a routerLink="/fix-sessions" class="text-info">Fix Sessions</a> page.
+    </p>
+
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-12 col-md-8">
+        <label for="fix-base-branch-input" class="form-label text-secondary fw-semibold small">Default base branch</label>
+        <input type="text" id="fix-base-branch-input" class="form-control bg-dark text-white border-secondary border-opacity-25 font-mono"
+               placeholder="Blank = target codebase's current branch" [(ngModel)]="autoFixBaseBranchInput">
+        <div class="form-text text-secondary small">Branch name only, e.g. <code class="text-info">6.2.143.0_BOOT_DEV_BRANCH_VINOTH_AO</code>, not a URL.</div>
+      </div>
+    </div>
+
+    <div class="border-top border-secondary border-opacity-10 pt-3">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="auto-fix-toggle" [(ngModel)]="autoFixEnabledInput">
+        <label class="form-check-label text-white small fw-semibold" for="auto-fix-toggle">
+          Auto-Fix: queue a Claude fix session for high-priority incidents
+        </label>
+      </div>
+      <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+        <label for="auto-fix-priority" class="text-secondary small">For incidents at priority</label>
+        <select id="auto-fix-priority" class="form-select form-select-sm bg-dark text-white border-secondary border-opacity-25 w-auto"
+                [(ngModel)]="autoFixMinPriorityInput" [disabled]="!autoFixEnabledInput">
+          <option value="P1">P1 only</option>
+          <option value="P2">P2 and above</option>
+          <option value="P3">P3 and above</option>
+          <option value="P4">All (P4 and above)</option>
+        </select>
+      </div>
+      <p class="text-secondary small mt-2 mb-0">
+        Off by default. When triage assigns a qualifying priority to an analyzed incident, a session is
+        <strong class="text-white">queued</strong> with its brief ready. It doesn't run Claude by itself yet: pick it up from
+        Fix Sessions. Unattended (headless) execution can be added later on the same sessions.
+      </p>
+    </div>
+
+    <button mat-flat-button class="text-white mt-3 d-flex align-items-center gap-2" style="background: var(--accent-gradient);"
+            [disabled]="autoFixSaving" (click)="saveAutoFix()" id="btn-save-auto-fix">
+      <mat-icon *ngIf="!autoFixSaving">save</mat-icon>
+      <mat-spinner *ngIf="autoFixSaving" diameter="18"></mat-spinner>
+      Save
+    </button>
   </div>
 
   <!-- Danger Zone -->

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, AiProviderSettingsResponse, LogRetentionSettingsResponse, GitlabSettingsResponse } from '../../services/api.service';
+import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -16,7 +17,8 @@ const RESET_CONFIRMATION_PHRASE = 'RESET DATABASE';
     FormsModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    RouterModule
   ],
   templateUrl: './settings.html',
   styleUrls: ['./settings.css']
@@ -57,6 +59,13 @@ export class SettingsComponent implements OnInit {
   gitlabUrlInput = '';
   gitlabProjectIdInput = '';
   gitlabTokenInput = ''; // write-only, never populated from the server response
+  gitlabCodeProjectInput = ''; // '' = auto-detect from the target codebase's origin remote
+
+  // Claude fix sessions / Auto-Fix
+  autoFixEnabledInput = false;
+  autoFixMinPriorityInput = 'P2';
+  autoFixBaseBranchInput = '';
+  autoFixSaving = false;
   gitlabSaving = false;
 
   // Two-step reset confirmation flow: 0 = idle, 1 = "are you sure", 2 = type-to-confirm
@@ -75,6 +84,39 @@ export class SettingsComponent implements OnInit {
     this.loadAiProvider();
     this.loadLogRetention();
     this.loadGitlab();
+    this.loadAutoFix();
+  }
+
+  loadAutoFix() {
+    this.apiService.getAutoFixSettings().subscribe({
+      next: (data) => {
+        this.autoFixEnabledInput = data.enabled;
+        this.autoFixMinPriorityInput = data.min_priority;
+        this.autoFixBaseBranchInput = data.base_branch;
+      },
+      error: (err) => console.error('Error fetching Auto-Fix settings', err)
+    });
+  }
+
+  saveAutoFix() {
+    this.autoFixSaving = true;
+    this.apiService.setAutoFixSettings({
+      enabled: this.autoFixEnabledInput,
+      min_priority: this.autoFixMinPriorityInput,
+      base_branch: this.autoFixBaseBranchInput.trim(),
+    }).subscribe({
+      next: (data) => {
+        this.autoFixSaving = false;
+        this.autoFixEnabledInput = data.enabled;
+        this.autoFixMinPriorityInput = data.min_priority;
+        this.autoFixBaseBranchInput = data.base_branch;
+        this.showMessage('Claude fix session settings saved.', 'success');
+      },
+      error: (err) => {
+        this.autoFixSaving = false;
+        this.showMessage(`Failed to save: ${err.error?.detail || err.message}`, 'danger');
+      }
+    });
   }
 
   loadGitlab() {
@@ -83,6 +125,7 @@ export class SettingsComponent implements OnInit {
         this.gitlab = data;
         this.gitlabUrlInput = data.url;
         this.gitlabProjectIdInput = data.project_id;
+        this.gitlabCodeProjectInput = data.code_project;
       },
       error: (err) => console.error('Error fetching GitLab settings', err)
     });
@@ -90,9 +133,10 @@ export class SettingsComponent implements OnInit {
 
   saveGitlab() {
     this.gitlabSaving = true;
-    const payload: { url?: string; project_id?: string; private_token?: string } = {
+    const payload: { url?: string; project_id?: string; private_token?: string; code_project?: string } = {
       url: this.gitlabUrlInput.trim(),
-      project_id: this.gitlabProjectIdInput.trim()
+      project_id: this.gitlabProjectIdInput.trim(),
+      code_project: this.gitlabCodeProjectInput.trim()
     };
     if (this.gitlabTokenInput.trim()) payload.private_token = this.gitlabTokenInput.trim();
 

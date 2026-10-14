@@ -172,6 +172,11 @@ class TriageEngine:
         except Exception as e:
             logger.error(f"Failed to trigger Notification Agent for decision {decision.id}: {e}")
 
+        # Auto-Fix: queue a Claude fix session for high-priority incidents
+        # (only when enabled in Settings; never raises)
+        from app.services.remediation.fix_sessions import maybe_queue_for_decision
+        maybe_queue_for_decision(db, decision)
+
         # 8️⃣ Return Pydantic model
         return TriageDecisionResponse.from_orm(decision)
 

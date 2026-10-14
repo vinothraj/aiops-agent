@@ -28,3 +28,65 @@
 .table td {
   border-bottom: 1px solid var(--border-glass);
 }
+
+/* ─── AI fix diff view ─────────────────────────────────────────── */
+.fix-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.fix-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.8rem;
+}
+.fix-card-header mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  margin-top: 0.5rem;
+  display: block;
+  overflow-x: auto;
+  max-height: 420px;
+}
+.diff-table td { padding: 0 0.5rem; white-space: pre; vertical-align: top; line-height: 1.55; }
+.diff-ln { color: rgba(255, 255, 255, 0.35); text-align: right; user-select: none; min-width: 3rem; }
+.diff-sign { user-select: none; width: 1rem; }
+.diff-code { color: #e6edf3; width: 100%; }
+.diff-add { background: rgba(46, 160, 67, 0.18); }
+.diff-add .diff-sign, .diff-add .diff-code { color: #7ee787; }
+.diff-del { background: rgba(248, 81, 73, 0.18); }
+.diff-del .diff-sign, .diff-del .diff-code { color: #ffa198; }
+.diff-hunk { background: rgba(56, 139, 253, 0.12); }
+.diff-hunk-text { color: #79c0ff; padding: 0.15rem 0.5rem !important; }
+.diff-pane-label { font-size: 0.75rem; padding: 0.5rem 0.75rem 0.25rem; }
+.diff-pane {
+  margin: 0 0.5rem 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: #e6edf3;
+  max-height: 300px;
+  overflow: auto;
+}
+.btn-sm-mat { font-size: 0.75rem !important; line-height: 28px !important; }
+.btn-sm-mat mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
+
+/* ─── Push AI fix to GitLab ─────────────────────────────────────── */
+.gitlab-push-form,
+.gitlab-push-result {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+.gitlab-push-result { border-color: rgba(25, 135, 84, 0.45); }
+.gitlab-push-form mat-icon,
+.gitlab-push-result mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }

@@ -2,12 +2,13 @@
 Masks customer/order/account/site identifiers and email addresses out of any
 text before it leaves this system for an external AI provider.
 
-Applied at the two points where raw log content (which, in this app's
+Applied at every point where raw log content (which, in this app's
 ecommerce log format, routinely embeds tokens like
 "(customer:1569260120) (order:30060948) (site:27379)") is handed to a
 third-party API:
   - app.services.rca.ai_providers.get_ai_suggestion (Claude / Gemini / Ollama)
   - app.services.rag.rag_service.generate_embedding (Gemini embeddings)
+  - app.services.remediation.fix_sessions.build_brief (Claude Code fix brief)
 
 Only the network-bound text is masked -- the raw log content already stored
 in Postgres/Qdrant is left as-is, since that never leaves this deployment.

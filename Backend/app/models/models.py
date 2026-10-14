@@ -256,6 +256,65 @@ class IssueActivity(Base):
     # Relationship back to GitlabIssue without cascade (handled on the "one" side)
     issue = relationship("GitlabIssue", back_populates="activities")
 
+# ─── Remediation: AI-assisted fix sessions ──────────────────────────────────
+
+class FixSession(Base):
+    """
+    One attempt to fix the code behind an incident, worked by an external
+    coding agent (Claude Code today -- interactively from a copied brief,
+    later headless). The agent reports progress back through the session's
+    events endpoint using a per-session token, so AIOps can track it from
+    "queued" to "completed" alongside the incident and its GitLab issue.
+    """
+    __tablename__ = "fix_sessions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    log_id = Column(Integer, ForeignKey("logs.id", ondelete="CASCADE"), nullable=False, index=True)
+    analysis_id = Column(Integer, ForeignKey("log_analyses.id", ondelete="SET NULL"), nullable=True)
+    incident_decision_id = Column(Integer, ForeignKey("incident_decisions.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    trigger = Column(String(20), nullable=False, default="manual")  # manual | auto
+    executor = Column(String(50), nullable=False, default="claude_code")  # who works it
+    priority = Column(String(10), nullable=True)  # P1-P4, copied from the triage decision
+    status = Column(String(30), nullable=False, default="queued", index=True)
+
+    gitlab_project = Column(String(255), nullable=True)
+    base_branch = Column(String(255), nullable=True)
+    branch = Column(String(255), nullable=True)
+    commit_sha = Column(String(64), nullable=True)
+    merge_request_url = Column(String(1024), nullable=True)
+
+    summary = Column(Text, nullable=True)  # agent's latest summary of what it found / changed
+    root_cause_confirmed = Column(Text, nullable=True)
+    files_changed = Column(Text, nullable=True)  # JSON array of repo paths
+    tests_summary = Column(Text, nullable=True)
+    ai_hypothesis = Column(Text, nullable=True)  # "Ask AI" suggestion handed over as a starting point
+
+    token_hash = Column(String(64), nullable=False)  # sha256 of the agent's callback token
+
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+
+    log = relationship("Log")
+    events = relationship("FixSessionEvent", back_populates="session", cascade="all, delete-orphan",
+                          order_by="FixSessionEvent.id")
+
+
+class FixSessionEvent(Base):
+    """Timeline entry for a FixSession: status changes and progress notes."""
+    __tablename__ = "fix_session_events"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    session_id = Column(Integer, ForeignKey("fix_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(String(30), nullable=False)
+    message = Column(Text, nullable=True)
+    source = Column(String(20), nullable=False)  # aiops | agent | user
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    session = relationship("FixSession", back_populates="events")
+
 # ─── Phase 7: Collaboration & Notifications ─────────────────────────────────
 
 class Notification(Base):

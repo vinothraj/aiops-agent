@@ -1,12 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, LogResponse, LogFileResponse, LogAnalysisResponse, LogSummaryResponse, LogQueryFilters, DiagnoseCodebaseResponse, AskAiResponse } from '../../services/api.service';
+import { ApiService, LogResponse, LogFileResponse, LogAnalysisResponse, LogSummaryResponse, LogQueryFilters, DiagnoseCodebaseResponse, AskAiResponse, CodeFixSuggestion, GitlabFixPushResponse } from '../../services/api.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { FixSessionPanelComponent } from '../fix-session-panel/fix-session-panel';
 
 const LEVEL_COLORS: { [level: string]: string } = {
   ERROR: 'var(--color-error)',
@@ -47,7 +48,8 @@ interface TimeSeriesBar {
     MatButtonModule,
     MatSelectModule,
     MatInputModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    FixSessionPanelComponent
   ],
   templateUrl: './log-viewer.html',
   styleUrls: ['./log-viewer.css']
@@ -84,6 +86,13 @@ export class LogViewerComponent implements OnInit {
   aiSuggestion: { [key: number]: AskAiResponse | null } = {};
   askingAi: { [key: number]: boolean } = {};
   aiError: { [key: number]: string } = {};
+  // Parsed diff rows per fix, computed once when the suggestion arrives
+  fixDiffRows = new Map<CodeFixSuggestion, DiffRow[]>();
+  // Push reviewed AI fix to a new GitLab branch (+ draft MR)
+  gitlabPushForm: { [key: number]: GitlabPushForm | null } = {};
+  pushingToGitlab: { [key: number]: boolean } = {};
+  gitlabPushError: { [key: number]: string } = {};
+  gitlabPushResult: { [key: number]: GitlabFixPushResponse | null } = {};
 
   // Create GitLab issue directly from a log row
   creatingGitlabIssue: { [key: number]: boolean } = {};
@@ -417,8 +426,14 @@ export class LogViewerComponent implements OnInit {
     const candidatePaths = this.diagnosis[logId]?.candidates.map(c => c.file_path);
     this.apiService.askAiForFix(logId, candidatePaths).subscribe({
       next: (data) => {
+        data.fixes = data.fixes || [];
+        data.fixes.forEach(f => this.fixDiffRows.set(f, f.diff ? parseUnifiedDiff(f.diff) : []));
         this.aiSuggestion[logId] = data;
         this.askingAi[logId] = false;
+        // A new suggestion invalidates any push form/result for the previous one.
+        this.gitlabPushForm[logId] = null;
+        this.gitlabPushResult[logId] = null;
+        this.gitlabPushError[logId] = '';
       },
       error: (err) => {
         this.askingAi[logId] = false;
@@ -426,4 +441,129 @@ export class LogViewerComponent implements OnInit {
       }
     });
   }
+
+  copyPatch(patch: string | undefined) {
+    if (!patch) return;
+    navigator.clipboard.writeText(patch).then(
+      () => this.showMessage('Patch copied to clipboard.', 'success'),
+      () => this.showMessage('Could not copy to clipboard.', 'danger')
+    );
+  }
+
+  downloadPatch(logId: number, patch: string | undefined) {
+    if (!patch) return;
+    const blob = new Blob([patch], { type: 'text/x-diff' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aiops-fix-log-${logId}.patch`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ─── Push AI fix to GitLab ─────────────────────────────────────────────
+
+  openGitlabPush(logId: number) {
+    this.gitlabPushError[logId] = '';
+    this.gitlabPushResult[logId] = null;
+    this.gitlabPushForm[logId] = null;
+    this.apiService.getGitlabFixDefaults(logId).subscribe({
+      next: (d) => {
+        this.gitlabPushForm[logId] = {
+          project: d.project || '',
+          configured: d.configured,
+          linked_issue_url: d.linked_issue_url || null,
+          base_branch: d.base_branch || '',
+          branch_name: d.branch_name,
+          commit_message: d.commit_message,
+          create_merge_request: true,
+        };
+      },
+      error: (err) => this.gitlabPushError[logId] = err.error?.detail || 'Could not load GitLab defaults.'
+    });
+  }
+
+  cancelGitlabPush(logId: number) {
+    this.gitlabPushForm[logId] = null;
+    this.gitlabPushError[logId] = '';
+  }
+
+  pushFixToGitlab(logId: number) {
+    const form = this.gitlabPushForm[logId];
+    const suggestion = this.aiSuggestion[logId];
+    if (!form || !suggestion) return;
+    const fixes = suggestion.fixes.filter(f => f.applied).map(f => ({
+      file_path: f.file_path,
+      relative_path: f.relative_path,
+      original: f.original,
+      replacement: f.replacement,
+      start_line: f.start_line,
+    }));
+    this.pushingToGitlab[logId] = true;
+    this.gitlabPushError[logId] = '';
+    this.apiService.pushFixToGitlab(logId, {
+      fixes,
+      base_branch: form.base_branch,
+      branch_name: form.branch_name,
+      commit_message: form.commit_message,
+      create_merge_request: form.create_merge_request,
+      explanation: suggestion.suggestion,
+    }).subscribe({
+      next: (res) => {
+        this.pushingToGitlab[logId] = false;
+        this.gitlabPushResult[logId] = res;
+        this.gitlabPushForm[logId] = null;
+        this.showMessage(`Fix pushed to ${res.project} on branch ${res.branch}.`, 'success');
+      },
+      error: (err) => {
+        this.pushingToGitlab[logId] = false;
+        this.gitlabPushError[logId] = err.error?.detail || 'Failed to push the fix to GitLab.';
+      }
+    });
+  }
+
+  appliedFixCount(suggestion: AskAiResponse): number {
+    return suggestion.fixes.filter(f => f.applied).length;
+  }
+}
+
+export interface GitlabPushForm {
+  project: string;
+  configured: boolean;
+  linked_issue_url: string | null;
+  base_branch: string;
+  branch_name: string;
+  commit_message: string;
+  create_merge_request: boolean;
+}
+
+export interface DiffRow {
+  kind: 'hunk' | 'context' | 'add' | 'del';
+  oldLine?: number;
+  newLine?: number;
+  text: string;
+}
+
+/** Turns a unified diff into display rows with old/new line numbers (file headers dropped). */
+export function parseUnifiedDiff(diff: string): DiffRow[] {
+  const rows: DiffRow[] = [];
+  let oldLine = 0;
+  let newLine = 0;
+  for (const raw of diff.split('\n')) {
+    const line = raw.replace(/\r$/, '');
+    if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('\\')) continue;
+    const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+    if (hunk) {
+      oldLine = +hunk[1];
+      newLine = +hunk[2];
+      rows.push({ kind: 'hunk', text: line });
+    } else if (line.startsWith('+')) {
+      rows.push({ kind: 'add', newLine: newLine++, text: line.slice(1) });
+    } else if (line.startsWith('-')) {
+      rows.push({ kind: 'del', oldLine: oldLine++, text: line.slice(1) });
+    } else if (line.startsWith(' ')) {
+      rows.push({ kind: 'context', oldLine: oldLine++, newLine: newLine++, text: line.slice(1) });
+    }
+  }
+  return rows;
 }
