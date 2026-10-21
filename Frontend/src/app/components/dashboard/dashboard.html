@@ -26,7 +26,7 @@
             <div class="text-secondary text-uppercase fw-semibold mb-1" style="font-size: 0.8rem;">Total Ingested Logs</div>
             <h2 class="text-white m-0 display-6 fw-bold">{{ stats.total_logs | number }}</h2>
           </div>
-          <div class="p-3 rounded-3" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">
+          <div class="p-3 rounded-3" style="background: rgba(109, 40, 217, 0.15); color: var(--brand-purple);">
             <mat-icon style="font-size: 2.2rem; width: auto; height: auto;">analytics</mat-icon>
           </div>
         </div>
@@ -87,7 +87,7 @@
             <!-- SVG Donut Chart -->
             <svg width="220" height="220" viewBox="0 0 42 42" class="donut-chart mb-4" id="severity-donut-svg">
               <circle class="donut-hole" cx="21" cy="21" r="15.91549430918954" fill="transparent"></circle>
-              <circle class="donut-ring" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="rgba(255, 255, 255, 0.05)" stroke-width="4.5"></circle>
+              <circle class="donut-ring" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="rgba(23, 23, 38, 0.05)" stroke-width="4.5"></circle>
               
               <!-- Segment: Normal (Success/Info/Debug combined) -->
               <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" 
@@ -111,10 +111,10 @@
               </circle>
               
               <g class="chart-text">
-                <text x="50%" y="47%" class="chart-number" text-anchor="middle" fill="#fff" font-size="6" font-family="var(--font-title)" font-weight="bold">
+                <text x="50%" y="47%" class="chart-number" text-anchor="middle" fill="#171726" font-size="6" font-family="var(--font-title)" font-weight="bold">
                   {{ stats.total_logs | number }}
                 </text>
-                <text x="50%" y="62%" class="chart-label" text-anchor="middle" fill="#94a3b8" font-size="2" font-family="var(--font-body)">
+                <text x="50%" y="62%" class="chart-label" text-anchor="middle" fill="var(--text-secondary)" font-size="2" font-family="var(--font-body)">
                   Total Logs
                 </text>
               </g>

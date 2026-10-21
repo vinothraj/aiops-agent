@@ -26,15 +26,15 @@
     </p>
 
     <div class="row g-2 align-items-end" id="codebase-path-form">
-      <div class="col-12 col-md-9">
+      <div class="col-12 col-md">
         <label for="codebase-path-input" class="form-label text-secondary fw-semibold small">Target Codebase Path</label>
         <input type="text" id="codebase-path-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
                placeholder="C:\Projects\ecommerce-app" [(ngModel)]="codebasePath" (keyup.enter)="saveCodebasePath()"
                [disabled]="codebasePathLoading">
       </div>
-      <div class="col-12 col-md-3">
-        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
-                style="background: var(--accent-gradient);" [disabled]="codebasePathSaving || codebasePathLoading" (click)="saveCodebasePath()" id="btn-save-codebase-path">
+      <div class="col-12 col-md-auto">
+        <button mat-flat-button color="primary" class="d-flex align-items-center justify-content-center gap-2 px-4"
+                [disabled]="codebasePathSaving || codebasePathLoading" (click)="saveCodebasePath()" id="btn-save-codebase-path">
           <mat-icon *ngIf="!codebasePathSaving">save</mat-icon>
           <mat-spinner *ngIf="codebasePathSaving" diameter="18"></mat-spinner>
           Save
@@ -69,34 +69,34 @@
       </div>
 
       <ng-container *ngIf="selectedProvider === 'ollama'">
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md">
           <label for="ollama-base-url-input" class="form-label text-secondary fw-semibold small">Ollama Base URL</label>
           <input type="text" id="ollama-base-url-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
                  placeholder="http://localhost:11434" [(ngModel)]="ollamaBaseUrl">
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md">
           <label for="ollama-model-input" class="form-label text-secondary fw-semibold small">Model Name</label>
           <input type="text" id="ollama-model-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
                  placeholder="llama3.1:8b" [(ngModel)]="ollamaModel">
         </div>
       </ng-container>
 
-      <div class="col-12 col-md-8" *ngIf="selectedProvider === 'claude'">
+      <div class="col-12 col-md" *ngIf="selectedProvider === 'claude'">
         <label for="claude-api-key-input" class="form-label text-secondary fw-semibold small">Claude API Key</label>
         <input type="password" id="claude-api-key-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
                [placeholder]="aiProvider?.claude_configured ? 'Configured — leave blank to keep current key' : 'sk-ant-...'"
                [(ngModel)]="claudeApiKeyInput" autocomplete="new-password">
       </div>
-      <div class="col-12 col-md-8" *ngIf="selectedProvider === 'gemini'">
+      <div class="col-12 col-md" *ngIf="selectedProvider === 'gemini'">
         <label for="gemini-api-key-input" class="form-label text-secondary fw-semibold small">Gemini API Key</label>
         <input type="password" id="gemini-api-key-input" class="form-control bg-dark text-white border-secondary border-opacity-25"
                [placeholder]="aiProvider?.gemini_configured ? 'Configured — leave blank to keep current key' : 'AIza...'"
                [(ngModel)]="geminiApiKeyInput" autocomplete="new-password">
       </div>
 
-      <div class="col-12" [ngClass]="selectedProvider === 'ollama' ? 'col-md-12' : 'col-md-4'">
-        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
-                style="background: var(--accent-gradient);" [disabled]="aiProviderSaving || aiProviderLoading" (click)="saveAiProvider()" id="btn-save-ai-provider">
+      <div class="col-12 col-md-auto">
+        <button mat-flat-button color="primary" class="d-flex align-items-center justify-content-center gap-2 px-4"
+                [disabled]="aiProviderSaving || aiProviderLoading" (click)="saveAiProvider()" id="btn-save-ai-provider">
           <mat-icon *ngIf="!aiProviderSaving">save</mat-icon>
           <mat-spinner *ngIf="aiProviderSaving" diameter="18"></mat-spinner>
           Save
@@ -209,9 +209,9 @@
     </div>
 
     <div class="row g-2" id="gitlab-actions">
-      <div class="col-12 col-md-8">
-        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
-                style="background: var(--accent-gradient);" [disabled]="gitlabSaving" (click)="saveGitlab()" id="btn-save-gitlab">
+      <div class="col-auto">
+        <button mat-flat-button color="primary" class="d-flex align-items-center justify-content-center gap-2 px-4"
+                [disabled]="gitlabSaving" (click)="saveGitlab()" id="btn-save-gitlab">
           <mat-icon *ngIf="!gitlabSaving">save</mat-icon>
           <mat-spinner *ngIf="gitlabSaving" diameter="18"></mat-spinner>
           Save
@@ -269,7 +269,7 @@
       </p>
     </div>
 
-    <button mat-flat-button class="text-white mt-3 d-flex align-items-center gap-2" style="background: var(--accent-gradient);"
+    <button mat-flat-button color="primary" class="mt-3 d-flex align-items-center gap-2 px-4"
             [disabled]="autoFixSaving" (click)="saveAutoFix()" id="btn-save-auto-fix">
       <mat-icon *ngIf="!autoFixSaving">save</mat-icon>
       <mat-spinner *ngIf="autoFixSaving" diameter="18"></mat-spinner>

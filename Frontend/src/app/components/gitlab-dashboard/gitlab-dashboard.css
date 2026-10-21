@@ -1,6 +1,6 @@
 .issue-card {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-subtle);
+  border: 1px solid rgba(23, 23, 38, 0.06);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
@@ -8,7 +8,7 @@
 .issue-card:hover {
   transform: translateY(-2px);
   border-color: rgba(252, 109, 38, 0.4);
-  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 20px -4px rgba(23, 23, 38, 0.1);
 }
 
 .issue-title:hover {
@@ -27,12 +27,12 @@
 .status-open {
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #10b981;
+  color: #047857;
 }
 .status-closed {
   background: rgba(107, 114, 128, 0.15);
   border: 1px solid rgba(107, 114, 128, 0.4);
-  color: #9ca3af;
+  color: var(--text-secondary);
 }
 
 .expand-arrow {
@@ -43,7 +43,7 @@
 }
 
 .activity-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(23, 23, 38, 0.05);
   animation: fadeIn 0.2s ease-in;
 }
 

@@ -11,7 +11,7 @@
   </div>
 
   <!-- Tabs Navigation -->
-  <div class="glass-panel p-2 mb-4 d-flex gap-2 align-items-center flex-wrap" style="background: rgba(15, 23, 42, 0.45); border-radius: 10px;">
+  <div class="glass-panel p-2 mb-4 d-flex gap-2 align-items-center flex-wrap" style="background: #ffffff; border-radius: 10px;">
     <button class="tab-btn" [class.active]="activeTab === 'preferences'" (click)="switchTab('preferences')">
       <mat-icon class="me-1">settings</mat-icon> Routing Preferences
     </button>
@@ -82,12 +82,12 @@
             <label class="form-check-label text-white small" for="isActiveSwitch">Enable Rule Active State</label>
           </div>
 
-          <div class="d-flex gap-2">
-            <button type="submit" mat-flat-button color="primary" class="flex-grow-1" style="background: var(--accent-gradient);">
-              <mat-icon class="me-1">save</mat-icon> {{ editingRecipientId ? 'Update Rule' : 'Add Rule' }}
-            </button>
-            <button *ngIf="editingRecipientId" type="button" mat-stroked-button class="text-white border-secondary border-opacity-25" (click)="cancelEdit()">
+          <div class="d-flex gap-2 justify-content-end">
+            <button *ngIf="editingRecipientId" type="button" mat-stroked-button class="px-4" (click)="cancelEdit()">
               Cancel
+            </button>
+            <button type="submit" mat-flat-button color="primary" class="px-4">
+              <mat-icon class="me-1">save</mat-icon> {{ editingRecipientId ? 'Update Rule' : 'Add Rule' }}
             </button>
           </div>
         </form>
@@ -117,7 +117,7 @@
             <div class="bg-black bg-opacity-25 p-3 rounded border border-secondary border-opacity-25 d-flex flex-wrap justify-content-between align-items-center gap-3 hover-card">
               <div class="d-flex align-items-center gap-3">
                 <div class="rounded-circle p-2.5 d-flex align-items-center justify-content-center" 
-                     [style.background-color]="recipient.channel === 'teams' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(14, 165, 233, 0.15)'"
+                     [style.background-color]="recipient.channel === 'teams' ? 'rgba(109, 40, 217, 0.15)' : 'rgba(14, 165, 233, 0.15)'"
                      [style.color]="recipient.channel === 'teams' ? 'var(--color-info)' : 'var(--color-debug)'">
                   <mat-icon>{{ recipient.channel === 'teams' ? 'groups' : 'mail' }}</mat-icon>
                 </div>
@@ -160,7 +160,7 @@
   <div *ngIf="activeTab === 'history'" class="glass-panel p-4 animate-fade-in">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="text-white fw-bold m-0" style="font-size: 1.25rem;">Alert Dispatch History</h3>
-      <button mat-flat-button class="text-white border border-secondary border-opacity-25" style="background: rgba(255,255,255,0.05);" (click)="loadHistory()">
+      <button mat-flat-button class="text-white border border-secondary border-opacity-25" style="background: rgba(23, 23, 38, 0.05);" (click)="loadHistory()">
         <mat-icon class="me-1">refresh</mat-icon> Refresh
       </button>
     </div>

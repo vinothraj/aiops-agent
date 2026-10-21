@@ -1,17 +1,16 @@
 <!-- Main App Layout Shell -->
 <div class="d-flex flex-column min-vh-100" style="background-color: var(--bg-app);">
   <!-- Premium Glassmorphic Navigation Header -->
-  <nav class="navbar navbar-expand-lg navbar-dark border-bottom border-light border-opacity-10 sticky-top py-3" 
-       style="background: rgba(8, 13, 22, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);"
+  <nav class="navbar navbar-expand-lg navbar-light border-bottom sticky-top py-3" 
+       style="background: #ffffff; box-shadow: 0 1px 8px rgba(23, 23, 38, 0.06);"
        id="app-navbar">
     <div class="container-fluid px-4">
       <!-- Brand Logo & Name -->
-      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="/" id="navbar-brand-link" style="font-family: var(--font-title); font-size: 1.25rem;">
-        <div class="d-flex align-items-center justify-content-center rounded-3 p-1.5 text-white" 
-             style="background: var(--accent-gradient); box-shadow: var(--accent-glow); width: 32px; height: 32px;">
-          <mat-icon style="font-size: 1.25rem; width: auto; height: auto;">security</mat-icon>
-        </div>
-        <span class="text-white">AIOps <span style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Platform</span></span>
+      <a class="navbar-brand d-flex align-items-center gap-3 fw-bold py-0" href="/" id="navbar-brand-link" style="font-family: var(--font-title); font-size: 1.25rem;">
+        <img src="biw-logo.jpg" alt="BI WORLDWIDE"
+             style="height: 58px; width: auto; margin: -6px 0;" id="navbar-brand-logo">
+        <span class="vr" style="height: 28px; opacity: 0.2;"></span>
+        <span style="color: var(--brand-navy);">AIOps <span style="color: var(--brand-orange);">Platform</span></span>
       </a>
 
       <!-- Navbar Toggle for Mobile -->
@@ -113,7 +112,7 @@
   </main>
 
   <!-- Footer -->
-  <footer class="py-4 border-top border-light border-opacity-10 text-center text-secondary font-mono" style="font-size: 0.8rem; background: rgba(8, 13, 22, 0.4);" id="app-footer">
+  <footer class="py-4 border-top text-center text-secondary font-mono" style="font-size: 0.8rem; background: var(--brand-navy); color: #c9c9d6 !important;" id="app-footer">
     <div class="container">
       &copy; 2026 Enterprise AIOps Platform Foundation. All rights reserved.
     </div>

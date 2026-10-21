@@ -41,13 +41,13 @@
                placeholder="\\us1colo.biworldwide.com\webdev\tomcat\sg353\pre\logs\pre0353m1"
                [(ngModel)]="newRootPath" (keyup.enter)="addRoot()">
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md">
         <label for="new-root-label" class="form-label text-secondary fw-semibold small">Label (optional)</label>
         <input type="text" id="new-root-label" class="form-control bg-dark text-white border-secondary border-opacity-25"
                placeholder="e.g. sg353-pre" [(ngModel)]="newRootLabel" (keyup.enter)="addRoot()">
       </div>
-      <div class="col-12 col-md-2">
-        <button mat-flat-button color="primary" class="w-100 d-flex align-items-center justify-content-center gap-2"
+      <div class="col-12 col-md-auto">
+        <button mat-flat-button color="primary" class="px-4 d-flex align-items-center justify-content-center gap-2"
                 [disabled]="addingRoot" (click)="addRoot()" id="btn-add-root">
           <mat-icon *ngIf="!addingRoot">add</mat-icon>
           <mat-spinner *ngIf="addingRoot" diameter="18"></mat-spinner>

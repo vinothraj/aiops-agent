@@ -16,7 +16,7 @@
 
 .tab-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(23, 23, 38, 0.04);
 }
 
 .tab-btn.active {
@@ -28,7 +28,7 @@
 
 /* Dark Input Fields overrides */
 .dark-input {
-  background-color: rgba(15, 23, 42, 0.6) !important;
+  background-color: #ffffff !important;
   border: 1px solid var(--border-glass) !important;
   color: var(--text-primary) !important;
   border-radius: 8px !important;
@@ -37,9 +37,9 @@
 }
 
 .dark-input:focus {
-  background-color: rgba(15, 23, 42, 0.8) !important;
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+  background-color: #ffffff !important;
+  border-color: var(--brand-purple) !important;
+  box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.25) !important;
   outline: none;
 }
 
@@ -49,12 +49,12 @@
 
 /* Switch override */
 .dark-switch:checked {
-  background-color: #6366f1 !important;
-  border-color: #6366f1 !important;
+  background-color: var(--brand-purple) !important;
+  border-color: var(--brand-purple) !important;
 }
 
 .dark-switch {
-  background-color: rgba(15, 23, 42, 0.6) !important;
+  background-color: #ffffff !important;
   border-color: var(--border-glass) !important;
   cursor: pointer;
 }
@@ -66,9 +66,9 @@
 
 .hover-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.3) !important;
-  background-color: rgba(0, 0, 0, 0.45) !important;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  border-color: rgba(109, 40, 217, 0.3) !important;
+  background-color: var(--bg-subtle) !important;
+  box-shadow: 0 8px 20px rgba(23, 23, 38, 0.1);
 }
 
 /* Hover buttons icons */
@@ -90,7 +90,7 @@
 }
 
 .hover-row:hover {
-  background-color: rgba(255, 255, 255, 0.02) !important;
+  background-color: rgba(23, 23, 38, 0.02) !important;
 }
 
 /* Keyframes animations */
@@ -114,5 +114,5 @@
   font-family: var(--font-mono);
   font-size: 0.85rem;
   line-height: 1.6;
-  color: #e2e8f0;
+  color: var(--text-primary);
 }

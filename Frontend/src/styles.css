@@ -2,28 +2,38 @@
 @import "bootstrap/dist/css/bootstrap.min.css";
 @import "@angular/material/prebuilt-themes/indigo-pink.css";
 
-/* Global Variable Declarations */
+/* Global Variable Declarations
+   Light theme modelled on biworldwide.com: white surfaces, deep navy text,
+   orange calls-to-action, purple highlights, Montserrat throughout. */
 :root {
-  --font-title: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-title: 'Montserrat', sans-serif;
+  --font-body: 'Montserrat', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
-  
-  --bg-app: #080d16;
-  --bg-card: rgba(30, 41, 59, 0.7);
-  --bg-card-hover: rgba(30, 41, 59, 0.95);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  
-  /* Log level colors (Harmonious & Sleek) */
-  --color-error: #f43f5e;
-  --color-warning: #f59e0b;
-  --color-info: #0ea5e9;
-  --color-debug: #10b981;
+
+  /* Brand palette */
+  --brand-navy: #171726;
+  --brand-orange: #f06424;
+  --brand-orange-hover: #d9531a;
+  --brand-purple: #6d28d9;
+  --brand-grey: #ededed;
+
+  --bg-app: #f6f6f8;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --bg-subtle: #f3f3f6;
+  --border-glass: rgba(23, 23, 38, 0.1);
+  --text-primary: #171726;
+  --text-secondary: #5b5b6e;
+
+  /* Log level colors (tuned for contrast on white) */
+  --color-error: #dc2626;
+  --color-warning: #b45309;
+  --color-info: #0369a1;
+  --color-debug: #047857;
   --color-default: #64748b;
-  
-  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  --accent-glow: 0 8px 32px 0 rgba(99, 102, 241, 0.2);
+
+  --accent-gradient: linear-gradient(135deg, #f06424 0%, #f06424 100%);
+  --accent-glow: 0 4px 14px 0 rgba(240, 100, 36, 0.25);
 }
 
 /* Base Styles */
@@ -39,24 +49,24 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-title);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 
-/* Glassmorphism Containers */
+/* Card Containers (class name kept from the earlier glass theme) */
 .glass-panel {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-glass);
   border-radius: 12px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 2px 10px 0 rgba(23, 23, 38, 0.06);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-panel:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(23, 23, 38, 0.18);
+  box-shadow: 0 6px 20px 0 rgba(23, 23, 38, 0.1);
 }
 
 /* Custom Scrollbars */
@@ -66,17 +76,126 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(8, 13, 22, 0.5);
+  background: var(--bg-subtle);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(23, 23, 38, 0.2);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+  background: rgba(23, 23, 38, 0.4);
 }
+
+/* Bootstrap utility remaps: the templates were written for a dark theme, so
+   the "light on dark" utilities are pointed at the light palette here. */
+.text-white, .text-light { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-primary { color: var(--brand-purple) !important; }
+.text-info { color: var(--color-info) !important; }
+.text-warning { color: var(--color-warning) !important; }
+.text-success { color: var(--color-debug) !important; }
+.text-danger { color: var(--color-error) !important; }
+
+.bg-dark { background-color: var(--bg-card) !important; }
+.bg-black { background-color: var(--bg-subtle) !important; }
+.bg-primary { --bs-primary-rgb: 109, 40, 217; }
+.border-primary { --bs-primary-rgb: 109, 40, 217; }
+.border-light { --bs-light-rgb: 23, 23, 38; }
+
+.badge.bg-dark { border-color: var(--border-glass) !important; }
+
+.form-control, .form-select {
+  background-color: #ffffff;
+  color: var(--text-primary);
+  border-color: rgba(23, 23, 38, 0.2) !important;
+  border-radius: 8px;
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: #ffffff;
+  color: var(--text-primary);
+  border-color: var(--brand-orange) !important;
+  box-shadow: 0 0 0 3px rgba(240, 100, 36, 0.18);
+}
+
+.form-control::placeholder { color: #9a9aab; }
+
+.table-dark {
+  --bs-table-color: var(--text-primary);
+  --bs-table-bg: #ffffff;
+  --bs-table-border-color: var(--border-glass);
+  --bs-table-striped-bg: var(--bg-subtle);
+  --bs-table-striped-color: var(--text-primary);
+  --bs-table-active-bg: var(--bg-subtle);
+  --bs-table-active-color: var(--text-primary);
+  --bs-table-hover-bg: #fbf3ef;
+  --bs-table-hover-color: var(--text-primary);
+  color: var(--text-primary);
+  border-color: var(--border-glass);
+}
+
+.table-dark th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Buttons: pill-shaped like the reference site */
+.btn {
+  border-radius: 40px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--brand-orange);
+  --bs-btn-border-color: var(--brand-orange);
+  --bs-btn-hover-bg: var(--brand-orange-hover);
+  --bs-btn-hover-border-color: var(--brand-orange-hover);
+  --bs-btn-active-bg: var(--brand-orange-hover);
+  --bs-btn-active-border-color: var(--brand-orange-hover);
+  --bs-btn-disabled-bg: var(--brand-orange);
+  --bs-btn-disabled-border-color: var(--brand-orange);
+}
+
+.mat-mdc-unelevated-button,
+.mat-mdc-raised-button,
+.mat-mdc-outlined-button,
+.mat-mdc-button {
+  border-radius: 40px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.mat-mdc-unelevated-button.mat-primary:not(:disabled),
+.mat-mdc-raised-button.mat-primary:not(:disabled) {
+  background: var(--brand-orange) !important;
+  color: #ffffff !important;
+}
+
+.mat-mdc-unelevated-button.mat-primary:not(:disabled):hover,
+.mat-mdc-raised-button.mat-primary:not(:disabled):hover {
+  background: var(--brand-orange-hover) !important;
+}
+
+.mat-mdc-unelevated-button.mat-accent:not(:disabled),
+.mat-mdc-raised-button.mat-accent:not(:disabled) {
+  background: var(--brand-navy) !important;
+  color: #ffffff !important;
+}
+
+.mat-mdc-outlined-button:not(:disabled) {
+  border-color: var(--brand-navy) !important;
+  color: var(--brand-navy) !important;
+}
+
+.mat-mdc-progress-spinner {
+  --mdc-circular-progress-active-indicator-color: var(--brand-orange);
+  --mat-progress-spinner-active-indicator-color: var(--brand-orange);
+}
+
+a { color: var(--brand-purple); }
 
 /* Log Badges */
 .badge-log {
@@ -90,58 +209,58 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .badge-error {
-  background-color: rgba(244, 63, 94, 0.15);
+  background-color: rgba(220, 38, 38, 0.1);
   color: var(--color-error);
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
 .badge-warning {
-  background-color: rgba(245, 158, 11, 0.15);
+  background-color: rgba(180, 83, 9, 0.1);
   color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(180, 83, 9, 0.3);
 }
 
 .badge-info {
-  background-color: rgba(14, 165, 233, 0.15);
+  background-color: rgba(3, 105, 161, 0.1);
   color: var(--color-info);
-  border: 1px solid rgba(14, 165, 233, 0.3);
+  border: 1px solid rgba(3, 105, 161, 0.3);
 }
 
 .badge-debug {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(4, 120, 87, 0.1);
   color: var(--color-debug);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(4, 120, 87, 0.3);
 }
 
 .badge-default {
-  background-color: rgba(100, 116, 139, 0.15);
+  background-color: rgba(100, 116, 139, 0.1);
   color: var(--color-default);
   border: 1px solid rgba(100, 116, 139, 0.3);
 }
 
 /* Status Badges */
 .badge-status-completed {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(4, 120, 87, 0.1);
   color: var(--color-debug);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(4, 120, 87, 0.3);
 }
 
 .badge-status-processing {
-  background-color: rgba(14, 165, 233, 0.15);
+  background-color: rgba(3, 105, 161, 0.1);
   color: var(--color-info);
-  border: 1px solid rgba(14, 165, 233, 0.3);
+  border: 1px solid rgba(3, 105, 161, 0.3);
 }
 
 .badge-status-new {
-  background-color: rgba(245, 158, 11, 0.15);
+  background-color: rgba(180, 83, 9, 0.1);
   color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(180, 83, 9, 0.3);
 }
 
 .badge-status-failed {
-  background-color: rgba(244, 63, 94, 0.15);
+  background-color: rgba(220, 38, 38, 0.1);
   color: var(--color-error);
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
 /* Text Mono Styles for code or log structures */
@@ -150,13 +269,13 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.875rem;
 }
 
-/* Angular Material Tables Overrides to blend with Dark Theme */
+/* Angular Material Tables */
 .mat-mdc-table {
   background-color: transparent !important;
 }
 
 .mat-mdc-header-row {
-  background-color: rgba(15, 23, 42, 0.6) !important;
+  background-color: var(--bg-subtle) !important;
 }
 
 .mat-mdc-row {
@@ -164,7 +283,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .mat-mdc-row:hover {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: #fbf3ef !important;
 }
 
 .mat-mdc-header-cell {
@@ -188,11 +307,10 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary) !important;
 }
 
-/* Active Nav Links styling */
+/* Active Nav Links styling: orange underline like the reference site */
 .nav-link.active-link {
-  background: var(--accent-gradient);
-  color: white !important;
-  font-weight: 500;
-  border-radius: 6px;
-  box-shadow: var(--accent-glow);
+  color: var(--brand-navy) !important;
+  font-weight: 700;
+  border-bottom: 3px solid var(--brand-orange) !important;
+  border-radius: 0;
 }

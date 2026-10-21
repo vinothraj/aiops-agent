@@ -15,7 +15,7 @@ const LEVEL_COLORS: { [level: string]: string } = {
   INFO: 'var(--color-info)',
   DEBUG: 'var(--color-debug)'
 };
-const DEFAULT_LEVEL_COLOR = '#94a3b8';
+const DEFAULT_LEVEL_COLOR = '#64748b';
 
 interface LevelBar {
   level: string;
