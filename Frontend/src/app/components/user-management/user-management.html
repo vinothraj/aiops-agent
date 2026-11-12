@@ -1,0 +1,56 @@
+<div class="container-fluid py-4" id="users-container">
+  <div class="mb-4">
+    <h1 class="m-0 users-title">User Access</h1>
+    <p class="text-secondary m-0">Approve who can use the platform. New sign-ups wait here until an administrator accepts them.</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger py-2">{{ error }}</div>
+
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <button *ngFor="let f of filters" type="button" class="btn btn-sm"
+            [ngClass]="filter === f ? 'btn-dark' : 'btn-outline-secondary'" (click)="setFilter(f)">
+      {{ f ? (f | titlecase) : 'All' }}
+      <span *ngIf="f === 'pending' && pendingCount" class="badge text-bg-warning ms-1">{{ pendingCount }}</span>
+    </button>
+  </div>
+
+  <div class="glass-panel p-0 overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle m-0" id="users-table">
+        <thead>
+          <tr><th>User</th><th>Status</th><th>Role</th><th>Requested</th><th>Last sign-in</th><th class="text-end">Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading"><td colspan="6" class="text-center text-secondary py-4">Loading…</td></tr>
+          <tr *ngIf="!loading && !users.length"><td colspan="6" class="text-center text-secondary py-4">No users in this view.</td></tr>
+          <tr *ngFor="let u of users">
+            <td>
+              <div class="fw-semibold">{{ u.name }}</div>
+              <div class="small text-secondary">{{ u.email }}</div>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="badge(u.status)">{{ u.status }}</span>
+              <div *ngIf="u.approved_by" class="small text-secondary">by {{ u.approved_by }}</div>
+            </td>
+            <td>{{ u.role }}</td>
+            <td class="small">{{ u.created_at | date:'medium' }}</td>
+            <td class="small">{{ u.last_login_at ? (u.last_login_at | date:'medium') : '—' }}</td>
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="u.id !== auth.user()?.id">
+                <button *ngIf="u.status !== 'approved'" class="btn btn-sm btn-success me-1" (click)="act(u, 'approve')">
+                  {{ u.status === 'pending' ? 'Approve' : 'Re-enable' }}
+                </button>
+                <button *ngIf="u.status === 'pending'" class="btn btn-sm btn-outline-danger me-1" (click)="act(u, 'reject')">Reject</button>
+                <button *ngIf="u.status === 'approved'" class="btn btn-sm btn-outline-secondary me-1" (click)="act(u, 'disable')">Disable</button>
+                <button *ngIf="u.status === 'approved'" class="btn btn-sm btn-outline-dark" (click)="toggleRole(u)">
+                  {{ u.role === 'admin' ? 'Make user' : 'Make admin' }}
+                </button>
+              </ng-container>
+              <span *ngIf="u.id === auth.user()?.id" class="small text-secondary">You</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

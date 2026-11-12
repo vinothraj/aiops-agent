@@ -1,0 +1,45 @@
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="text-center mb-4">
+      <img src="biw-logo.jpg" alt="BI WORLDWIDE" class="login-logo">
+      <h1 class="login-title">AIOps <span>Platform</span></h1>
+      <p class="login-sub">{{ mode === 'signin' ? 'Sign in to continue' : 'Request access to the platform' }}</p>
+    </div>
+
+    <div *ngIf="info" class="alert alert-success py-2 small" id="login-info">{{ info }}</div>
+    <div *ngIf="error" class="alert alert-danger py-2 small" id="login-error">{{ error }}</div>
+
+    <form (ngSubmit)="submit()" autocomplete="on">
+      <div class="mb-3" *ngIf="mode === 'register'">
+        <label class="form-label small fw-semibold" for="reg-name">Full name</label>
+        <input id="reg-name" name="name" class="form-control" [(ngModel)]="name" autocomplete="name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold" for="login-email">Email</label>
+        <input id="login-email" name="email" type="email" class="form-control" [(ngModel)]="email" autocomplete="username">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold" for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" class="form-control" [(ngModel)]="password"
+               [autocomplete]="mode === 'signin' ? 'current-password' : 'new-password'">
+      </div>
+      <div class="mb-3" *ngIf="mode === 'register'">
+        <label class="form-label small fw-semibold" for="reg-confirm">Confirm password</label>
+        <input id="reg-confirm" name="confirm" type="password" class="form-control" [(ngModel)]="confirm" autocomplete="new-password">
+        <div class="form-text">At least 8 characters. An administrator must approve your account before you can sign in.</div>
+      </div>
+      <button type="submit" class="btn btn-brand w-100" [disabled]="busy" id="login-submit">
+        {{ busy ? 'Please wait…' : (mode === 'signin' ? 'Sign in' : 'Request access') }}
+      </button>
+    </form>
+
+    <div class="text-center mt-3 small">
+      <ng-container *ngIf="mode === 'signin'">
+        No account? <a href="javascript:void(0)" (click)="setMode('register')" id="switch-register">Request access</a>
+      </ng-container>
+      <ng-container *ngIf="mode === 'register'">
+        Already approved? <a href="javascript:void(0)" (click)="setMode('signin')" id="switch-signin">Sign in</a>
+      </ng-container>
+    </div>
+  </div>
+</div>

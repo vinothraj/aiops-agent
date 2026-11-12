@@ -9,18 +9,23 @@ import { GitlabDashboardComponent } from './components/gitlab-dashboard/gitlab-d
 import { NotificationsComponent } from './components/notifications/notifications';
 import { SettingsComponent } from './components/settings/settings';
 import { FixSessionsComponent } from './components/fix-sessions/fix-sessions';
+import { LoginComponent } from './components/login/login';
+import { UserManagementComponent } from './components/user-management/user-management';
+import { authGuard, adminGuard } from './auth.guard';
 
 export const routes: Routes = [
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'logs', component: LogViewerComponent },
-  { path: 'log-sources', component: LogSourcesComponent },
-  { path: 'rca', component: RcaDashboardComponent },
-  { path: 'incidents', component: IncidentQueueComponent },
-  { path: 'incident-groups', component: IncidentGroupsComponent },
-  { path: 'gitlab-issues', component: GitlabDashboardComponent },
-  { path: 'fix-sessions', component: FixSessionsComponent },
-  { path: 'notifications', component: NotificationsComponent },
-  { path: 'settings', component: SettingsComponent },
+  { path: 'login', component: LoginComponent },
+  { path: 'users', component: UserManagementComponent, canActivate: [adminGuard] },
+  { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
+  { path: 'logs', component: LogViewerComponent, canActivate: [authGuard] },
+  { path: 'log-sources', component: LogSourcesComponent, canActivate: [authGuard] },
+  { path: 'rca', component: RcaDashboardComponent, canActivate: [authGuard] },
+  { path: 'incidents', component: IncidentQueueComponent, canActivate: [authGuard] },
+  { path: 'incident-groups', component: IncidentGroupsComponent, canActivate: [authGuard] },
+  { path: 'gitlab-issues', component: GitlabDashboardComponent, canActivate: [authGuard] },
+  { path: 'fix-sessions', component: FixSessionsComponent, canActivate: [authGuard] },
+  { path: 'notifications', component: NotificationsComponent, canActivate: [authGuard] },
+  { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: '**', redirectTo: 'dashboard' }
 ];

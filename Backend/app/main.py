@@ -11,6 +11,7 @@ from app.api.endpoints.stats import warm_stats_cache
 from app.services.watcher import log_watcher_service
 from app.services.log_retention import log_retention_service
 from app.database.session import Base, engine
+from app.services.auth import seed_admin
 
 # Setup logging
 setup_logging(log_level="INFO")
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     try:
         # Create database tables automatically
         Base.metadata.create_all(bind=engine)
+        seed_admin()
         if not settings.DATABASE_URL.startswith("sqlite"):
             log_watcher_service.start()
         else:

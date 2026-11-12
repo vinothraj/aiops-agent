@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.database.session import get_db
+from app.services.auth import get_current_user
 from app.models.models import FixSession
 from app.schemas.schemas import (
     FixSessionResponse,
@@ -28,6 +29,7 @@ from app.services.remediation.fix_sessions import (
 )
 
 router = APIRouter()
+AUTH = [Depends(get_current_user)]
 
 # Agents report through this header; the token is per session and only ever
 # shown inside the brief (stored hashed).
@@ -78,7 +80,7 @@ def _aiops_url(request: Request) -> str:
     return (settings.AIOPS_PUBLIC_URL or str(request.base_url)).rstrip("/")
 
 
-@router.post("", response_model=FixSessionBriefResponse)
+@router.post("", dependencies=AUTH, response_model=FixSessionBriefResponse)
 def create_fix_session(payload: FixSessionCreateRequest, request: Request, db: Session = Depends(get_db)):
     """
     "Debug with Claude": opens (or resumes) the fix session for a log and
@@ -94,7 +96,7 @@ def create_fix_session(payload: FixSessionCreateRequest, request: Request, db: S
     return FixSessionBriefResponse(session=to_response(session), brief=build_brief(db, session, token, _aiops_url(request)))
 
 
-@router.get("", response_model=List[FixSessionResponse])
+@router.get("", dependencies=AUTH, response_model=List[FixSessionResponse])
 def list_fix_sessions(
     status: Optional[str] = Query(None, description="Filter by status; 'active' = any non-terminal status"),
     log_id: Optional[int] = None,
@@ -113,12 +115,12 @@ def list_fix_sessions(
     return [to_response(s, include_events=False) for s in db.scalars(query).all()]
 
 
-@router.get("/{session_id}", response_model=FixSessionResponse)
+@router.get("/{session_id}", dependencies=AUTH, response_model=FixSessionResponse)
 def get_fix_session(session_id: int, db: Session = Depends(get_db)):
     return to_response(_get_session(db, session_id))
 
 
-@router.post("/{session_id}/brief", response_model=FixSessionBriefResponse)
+@router.post("/{session_id}/brief", dependencies=AUTH, response_model=FixSessionBriefResponse)
 def reissue_brief(session_id: int, request: Request, db: Session = Depends(get_db)):
     """
     Re-issues the brief for an open session (e.g. one queued by Auto-Fix).
@@ -152,7 +154,7 @@ def report_progress(
     return to_response(session)
 
 
-@router.post("/{session_id}/cancel", response_model=FixSessionResponse)
+@router.post("/{session_id}/cancel", dependencies=AUTH, response_model=FixSessionResponse)
 def cancel_fix_session(session_id: int, payload: Optional[FixSessionCancelRequest] = None, db: Session = Depends(get_db)):
     session = _get_session(db, session_id)
     try:

@@ -368,3 +368,21 @@ class AppSetting(Base):
     value = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
+
+
+# --- Users & access control ---
+
+class User(Base):
+    """Self-registered users stay 'pending' until an admin approves them."""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    name = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), default="user", nullable=False)  # user, admin
+    status = Column(String(20), default="pending", nullable=False)  # pending, approved, rejected, disabled
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    approved_by = Column(String(255), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)

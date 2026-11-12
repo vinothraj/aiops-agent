@@ -51,6 +51,17 @@ class Settings(BaseSettings):
     # right when the backend is reached directly (no reverse proxy).
     AIOPS_PUBLIC_URL: Optional[str] = None
 
+    # Authentication
+    # Signing key for login tokens. Unset = a random key is generated once and
+    # stored in the database (tokens survive restarts).
+    AUTH_SECRET_KEY: Optional[str] = None
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+    # Bootstrap administrator, created at startup only if no admin exists yet.
+    # Leave ADMIN_PASSWORD unset to skip seeding.
+    ADMIN_EMAIL: str = "admin@aiops.local"
+    ADMIN_NAME: str = "Administrator"
+    ADMIN_PASSWORD: Optional[str] = None
+
     # Qdrant Configuration
     QDRANT_PATH: str = "qdrant_data"
 
